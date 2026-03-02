@@ -1,0 +1,270 @@
+{
+  "_comment": "Example questionnaire answers file for TaxVantage AI. Feed this to the pipeline with: python -m src --input examples/answers.json --out ./output",
+
+  "study_metadata_answers": {
+    "client_legal_name": "Acme Software Corp",
+    "ein": "47-1234567",
+    "entity_type": "C-Corp",
+    "address": "500 Innovation Blvd, Suite 300, Austin, TX 78701",
+    "industry": "Software / SaaS",
+    "website": "https://www.acmesoftware.com",
+    "tax_year": "2023",
+    "credit_method": "ASC",
+    "preparer_firm": "Occams Advisory",
+    "preparer_name": "Jane Smith, CPA",
+    "date_prepared": "2024-03-15"
+  },
+
+  "company_background_answers": {
+    "business_overview": "Acme Software Corp is a B2B SaaS company headquartered in Austin, TX. The company develops cloud-based logistics and route optimization software used by mid-market and enterprise fleet operators across North America. Founded in 2015, Acme serves over 400 customers and employs approximately 85 full-time employees.",
+    "products_and_services": [
+      "RouteIQ — ML-driven route optimization SaaS platform",
+      "FleetTrack — Real-time GPS and telematics dashboard",
+      "DispatchAI — Automated dispatch and load-balancing engine"
+    ],
+    "rd_departments": [
+      "Core Engineering (Platform & Infrastructure)",
+      "Data Science & ML",
+      "Product Engineering (Mobile & Web)"
+    ],
+    "locations": [
+      "Austin, TX (HQ)",
+      "Remote (distributed engineering team)"
+    ],
+    "org_structure_summary": "Two engineering pods report to the VP of Engineering. The Data Science team operates as a shared service supporting all product lines. Each pod owns end-to-end delivery for one product vertical."
+  },
+
+  "gross_receipts_answers": {
+    "year_0": 4850000,
+    "year_minus_1": 3920000,
+    "year_minus_2": 3140000,
+    "year_minus_3": 2560000
+  },
+
+  "projects": [
+    {
+      "project_id": "P001",
+      "project_name": "ML-Based Dynamic Route Optimization Engine",
+      "business_component": "RouteIQ route optimization engine — version 2.0",
+      "status": "Completed",
+
+      "objective": "Redesign the core routing engine to replace the existing heuristic algorithm with a machine learning model capable of optimizing delivery routes in real time under dynamic traffic and weather conditions.",
+      "problem_statement": "The legacy heuristic algorithm used static traffic assumptions and produced suboptimal routes during peak hours and adverse weather, resulting in a 12–15% excess in delivery time reported by customers.",
+      "technical_uncertainty": "It was technically uncertain at project inception whether transformer-based sequence models could generalize to real-time multi-stop routing under variable constraints (vehicle capacity, time windows, live traffic feeds) without overfitting to historical data.",
+      "hypotheses_tested": [
+        "H1: A fine-tuned LSTM model will outperform the heuristic baseline on held-out route scenarios.",
+        "H2: Augmenting training data with synthetic adverse-weather scenarios will improve generalization.",
+        "H3: An ensemble of LSTM and gradient-boosted tree models will outperform either model alone."
+      ],
+      "experimentation_process": [
+        "Phase 1: Established baseline — benchmarked legacy heuristic on 18 months of historical GPS data.",
+        "Phase 2: Trained three LSTM architectures on the historical dataset; evaluated on 20% held-out test set.",
+        "Phase 3: Initial LSTM failed generalization test (overfit to peak-hour patterns). Retrained with data augmentation (synthetic off-peak and adverse-weather scenarios).",
+        "Phase 4: Built gradient-boosted tree model as a competing alternative.",
+        "Phase 5: Evaluated LSTM-only, GBT-only, and LSTM+GBT ensemble on 90-day live A/B test with a subset of 15 customers.",
+        "Phase 6: Ensemble approach selected; integrated into production RouteIQ v2.0."
+      ],
+      "alternatives_considered": [
+        "Rule-based heuristic (incumbent, replaced)",
+        "Standalone LSTM model",
+        "Genetic algorithm optimizer",
+        "Third-party routing API (rejected due to data privacy requirements)"
+      ],
+      "results_or_outcome": "The LSTM+GBT ensemble achieved an 18.3% reduction in average delivery time versus the heuristic baseline in the live A/B test. RouteIQ v2.0 shipped to general availability in Q3 2023.",
+      "failures_or_iterations": "First LSTM variant (Phase 2) failed the generalization test with a 34% performance degradation on adverse-weather scenarios. Required retraining with augmented data (Phase 3) before meeting the acceptance threshold.",
+
+      "permitted_purpose": "The project developed new functionality — a ML-driven routing engine — for the company's commercial RouteIQ SaaS product. The resulting improvement directly constitutes a new business component (RouteIQ v2.0).",
+      "technological_in_nature": "The project relied on machine learning (LSTM neural networks, gradient-boosted trees, ensemble methods), software engineering, and applied statistics. All experimentation applied principles from computer science and mathematical optimization.",
+      "elimination_of_uncertainty": "At project start it was uncertain whether ML models could generalize to real-time, multi-constraint routing problems. The uncertainty was whether any technically feasible design existed that would outperform the heuristic at scale. This uncertainty was resolved through systematic experimentation across five model variants over approximately nine months.",
+      "process_of_experimentation": "The team followed a structured experimental protocol: baseline establishment, hypothesis formulation, controlled A/B testing, and iterative refinement. Three separate model architectures were evaluated. When the initial LSTM failed, the team pivoted to data augmentation rather than abandoning the approach, demonstrating systematic evaluation of alternatives.",
+
+      "jira_links": ["https://jira.acmesoftware.com/browse/ENG-1201", "https://jira.acmesoftware.com/browse/ENG-1345"],
+      "github_links": ["https://github.com/acmesoftware/routeiq-ml-v2"],
+      "design_docs": ["https://confluence.acmesoftware.com/display/ENG/RouteIQ+v2+Architecture+RFC"],
+      "test_reports": ["https://confluence.acmesoftware.com/display/ENG/RouteIQ+v2+AB+Test+Results"],
+      "other_docs": [],
+
+      "source_answers": {
+        "C1_objective": "Redesign core routing engine using ML to optimize routes under dynamic conditions.",
+        "C2_uncertainty": "Unknown whether transformer-based models could generalize to multi-stop routing without overfitting.",
+        "C3_experimentation": "Five model variants tested over 9 months; LSTM+GBT ensemble selected after live A/B test.",
+        "C4_outcome": "18.3% reduction in average delivery time; shipped Q3 2023."
+      }
+    },
+    {
+      "project_id": "P002",
+      "project_name": "Automated Dispatch and Load-Balancing Engine",
+      "business_component": "DispatchAI — automated dispatch and load balancing module",
+      "status": "Ongoing",
+
+      "objective": "Develop an automated dispatch engine that dynamically assigns delivery jobs to available drivers in real time, balancing load across the fleet while satisfying time-window and capacity constraints.",
+      "problem_statement": "Manual dispatch operations caused uneven driver utilization (some drivers at 60% capacity while others were overloaded) and frequent SLA breaches due to human assignment errors under high-volume conditions.",
+      "technical_uncertainty": "It was technically uncertain whether a constraint satisfaction solver combined with a reinforcement learning policy could produce feasible, near-optimal dispatch assignments at the throughput required (>500 assignments per minute) without exceeding acceptable latency.",
+      "hypotheses_tested": [
+        "H1: A constraint satisfaction solver (CP-SAT) can generate feasible assignments within 200ms per dispatch event.",
+        "H2: A reinforcement learning policy trained on historical dispatch outcomes will reduce SLA breach rate vs. rule-based assignment.",
+        "H3: Combining CP-SAT for feasibility filtering with RL for ranking will outperform either alone."
+      ],
+      "experimentation_process": [
+        "Phase 1: Modeled the dispatch problem as a constraint satisfaction problem; evaluated CP-SAT solver performance under simulated load.",
+        "Phase 2: Built a rule-based assignment baseline for comparison.",
+        "Phase 3: Trained RL policy (PPO algorithm) in a simulation environment using 24 months of historical dispatch logs.",
+        "Phase 4: Benchmarked CP-SAT + RL hybrid vs. rule-based baseline in simulation.",
+        "Phase 5: Deployed hybrid to a shadow environment; measured latency and SLA outcomes."
+      ],
+      "alternatives_considered": [
+        "Rule-based priority queue (baseline)",
+        "CP-SAT constraint solver only",
+        "RL policy only (rejected due to constraint violation rate in simulation)"
+      ],
+      "results_or_outcome": "Shadow environment results show a 22% reduction in SLA breach rate vs. rule-based baseline. Latency requirement (200ms) met in 97.4% of cases. Full production release planned Q1 2024.",
+      "failures_or_iterations": "Pure RL policy (no constraint solver) produced infeasible assignments (vehicle capacity violations) in 8% of simulation runs. Hybrid architecture adopted to enforce hard constraints before RL ranking.",
+
+      "permitted_purpose": "The project is developing a new DispatchAI module for the company's logistics platform, constituting a new business component.",
+      "technological_in_nature": "The project applies operations research (constraint programming), reinforcement learning (PPO), and distributed systems engineering.",
+      "elimination_of_uncertainty": "It was uncertain whether a real-time constraint satisfaction + RL hybrid could meet throughput and latency requirements at production scale. This was resolved through iterative simulation testing and shadow deployment.",
+      "process_of_experimentation": "The team systematically evaluated three architectures (rule-based, CP-SAT only, RL only) before converging on the hybrid approach. Each variant was tested in controlled simulation before shadow deployment.",
+
+      "jira_links": ["https://jira.acmesoftware.com/browse/ENG-1502"],
+      "github_links": ["https://github.com/acmesoftware/dispatchai"],
+      "design_docs": ["https://confluence.acmesoftware.com/display/ENG/DispatchAI+Design+Doc"],
+      "test_reports": [],
+      "other_docs": ["https://confluence.acmesoftware.com/display/ENG/DispatchAI+Shadow+Results"],
+
+      "source_answers": {
+        "C1_objective": "Develop real-time dispatch engine with constraint satisfaction + RL to automate load balancing.",
+        "C2_uncertainty": "Unknown whether CP-SAT + RL hybrid could meet >500 assignments/min at <200ms latency.",
+        "C3_experimentation": "Three architectures evaluated in simulation; hybrid selected after RL-only failed constraint checks.",
+        "C4_outcome": "22% SLA breach reduction in shadow; full production release Q1 2024."
+      }
+    }
+  ],
+
+  "employees": [
+    {
+      "employee_id": "E001",
+      "employee_name": "Alice Johnson",
+      "job_title": "Staff ML Engineer",
+      "department": "Data Science & ML",
+      "location": "Austin, TX",
+      "w2_box_1_wages": 165000,
+      "qualified_percentage": 0.85,
+      "qualification_basis": "Interview",
+      "project_allocation": {"P001": 0.70, "P002": 0.30},
+      "notes": "Led ML model development for RouteIQ v2 and contributed to DispatchAI RL policy.",
+      "source_answers": {
+        "D1_time": "Alice spent approximately 85% of her time on qualified R&D activities in 2023.",
+        "D2_projects": "70% RouteIQ ML engine (P001), 30% DispatchAI RL policy (P002)."
+      }
+    },
+    {
+      "employee_id": "E002",
+      "employee_name": "Bob Chen",
+      "job_title": "Senior Software Engineer",
+      "department": "Core Engineering",
+      "location": "Remote",
+      "w2_box_1_wages": 148000,
+      "qualified_percentage": 0.75,
+      "qualification_basis": "Interview",
+      "project_allocation": {"P001": 0.50, "P002": 0.50},
+      "notes": "Platform integration work for both RouteIQ v2 and DispatchAI.",
+      "source_answers": {
+        "D1_time": "Bob spent approximately 75% of his time on qualified R&D integration work.",
+        "D2_projects": "Split evenly between P001 and P002."
+      }
+    },
+    {
+      "employee_id": "E003",
+      "employee_name": "Carol Martinez",
+      "job_title": "Data Scientist",
+      "department": "Data Science & ML",
+      "location": "Austin, TX",
+      "w2_box_1_wages": 140000,
+      "qualified_percentage": 0.90,
+      "qualification_basis": "Interview",
+      "project_allocation": {"P001": 0.40, "P002": 0.60},
+      "notes": "Built simulation environment for DispatchAI and contributed to RouteIQ model evaluation.",
+      "source_answers": {
+        "D1_time": "Carol spent approximately 90% of her time on qualified R&D activities.",
+        "D2_projects": "40% RouteIQ evaluation (P001), 60% DispatchAI simulation (P002)."
+      }
+    },
+    {
+      "employee_id": "E004",
+      "employee_name": "David Kim",
+      "job_title": "VP of Engineering",
+      "department": "Engineering Leadership",
+      "location": "Austin, TX",
+      "w2_box_1_wages": 210000,
+      "qualified_percentage": 0.30,
+      "qualification_basis": "Manager Estimate",
+      "project_allocation": {"P001": 0.50, "P002": 0.50},
+      "notes": "Technical oversight and architecture review; 30% of time on qualified activities.",
+      "source_answers": {
+        "D1_time": "David spends approximately 30% of his time in direct technical oversight of R&D projects.",
+        "D2_projects": "Evenly split between P001 and P002 oversight."
+      }
+    }
+  ],
+
+  "contractors": [
+    {
+      "vendor_id": "V001",
+      "vendor_name": "DataStream Analytics LLC",
+      "description_of_work": "Provided data engineering services to build the training data pipeline for the RouteIQ ML engine, including ETL design, data augmentation scripts, and feature engineering for the LSTM model.",
+      "total_amount_paid": 68000,
+      "qualified_percentage": 1.0,
+      "company_retains_rights": true,
+      "company_bears_financial_risk": true,
+      "supporting_contract_reference": "SOW-2023-DS-001 dated January 15, 2023 — Acme retains all IP; fixed-fee engagement (financial risk stays with Acme).",
+      "project_allocation": {"P001": 1.0},
+      "notes": null,
+      "source_answers": {
+        "E1_rights": "SOW-2023-DS-001 assigns all deliverables and IP to Acme Software Corp.",
+        "E2_risk": "Fixed-fee contract; Acme bears all financial risk if research objectives are not met."
+      }
+    }
+  ],
+
+  "supplies": [],
+
+  "cloud_computing": [
+    {
+      "cloud_id": "C001",
+      "provider": "AWS",
+      "service_category": "Compute (EC2/SageMaker)",
+      "billing_reference": "AWS-2023-ACME-Q1Q2Q3Q4",
+      "amount": 42000,
+      "qualified_percentage": 0.80,
+      "project_allocation": {"P001": 0.65, "P002": 0.35}
+    }
+  ],
+
+  "prior_year_qres": {
+    "_comment": "Optional. Supply exact prior-year QRE figures (from Form 6765) to use in the ASC credit calculation instead of deriving them from gross receipts.",
+    "enabled": true,
+    "year_minus_1_qre": 580000,
+    "year_minus_2_qre": 460000,
+    "year_minus_3_qre": 370000
+  },
+
+  "methodology_disclosures_answers": {
+    "methodology_summary": "Qualified research percentages for employees were determined through in-depth interviews conducted by Occams Advisory in Q1 2024. Each employee described their primary activities for the 2023 tax year, and qualified percentages were assigned based on time spent on activities meeting the IRC Section 41 four-part test. Contractor inclusion was verified against signed SOW agreements confirming IP transfer and financial risk allocation. Cloud computing costs were allocated based on infrastructure tagging by project as documented in AWS Cost Explorer.",
+    "limitations": [
+      "Employee time allocations are estimates based on manager and employee interviews, not contemporaneous time-tracking records.",
+      "Cloud computing qualified percentage (80%) excludes estimated non-R&D usage (CI/CD pipeline, staging environments, customer-facing infrastructure).",
+      "Contractor DataStream Analytics LLC work is 100% allocated to P001 based on SOW scope; no allocation to P002."
+    ],
+    "disclaimer_text": "This study was prepared by Occams Advisory solely for the purpose of supporting Acme Software Corp's Federal R&D Tax Credit claim under IRC Section 41 for tax year 2023. This document should not be relied upon for any other purpose. Occams Advisory has relied upon information provided by the client and has not independently verified underlying financial records unless otherwise noted."
+  },
+
+  "interview_responses": {
+    "A1": "Acme Software Corp",
+    "A2": "47-1234567",
+    "A3": "C-Corp",
+    "B1": "B2B SaaS company developing cloud-based logistics and route optimization software.",
+    "C1_P001": "Redesign core routing engine using ML to optimize routes under dynamic conditions.",
+    "C1_P002": "Develop real-time dispatch engine with constraint satisfaction + RL.",
+    "D_methodology": "Employee interviews conducted Q1 2024 by Occams Advisory."
+  }
+}

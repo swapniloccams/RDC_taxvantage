@@ -1,0 +1,4 @@
+expense_id,expense_type,description,vendor,reference,amount,qualified_percentage,project_allocations,provider,service_category,notes
+S001,supply,GPU compute credits for model training,AWS,AWS Invoice #INV-2024-Q2-ML,12000,1.0,P001:1.0,,,EC2 P3 instances used exclusively for ML model training experiments
+C001,cloud,EC2 compute costs for training,AWS,AWS Cost Allocation Tag: project=ml-image-recognition,8500,1.0,P001:1.0,AWS,Compute,EC2 compute costs for training and experimentation
+C002,cloud,S3 storage for datasets,AWS,AWS Cost Allocation Tag: project=ml-image-recognition,2500,1.0,P001:1.0,AWS,Storage,S3 storage for training datasets and model artifacts

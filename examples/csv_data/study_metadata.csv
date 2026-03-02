@@ -1,0 +1,30 @@
+field,value
+legal_name,Acme Corporation
+ein,12-3456789
+entity_type,C-Corp
+address,"123 Main Street, San Francisco, CA 94105"
+industry,Software Development
+website,https://acme.example.com
+firm_name,Occams Advisory
+preparer_name,"John Smith, CPA"
+date_prepared,2024-03-15
+tax_year,2024
+start_date,2024-01-01
+end_date,2024-12-31
+return_type,Original
+credit_method,ASC
+business_overview,"Acme Corporation develops enterprise SaaS solutions for digital asset management and workflow automation."
+products_and_services,"Cloud-based digital asset management platform; AI-powered image recognition and tagging; Workflow automation tools"
+rd_departments,"Engineering; Product Development; Data Science"
+locations,"San Francisco, CA (Headquarters); Austin, TX (Engineering)"
+org_structure_summary,"Engineering team of 25 employees organized into platform, AI/ML, and infrastructure groups reporting to VP of Engineering."
+gross_receipts_year_0,5000000
+gross_receipts_year_minus_1,4200000
+gross_receipts_year_minus_2,3500000
+gross_receipts_year_minus_3,2800000
+qre_prior_year_1,210000
+qre_prior_year_2,180000
+qre_prior_year_3,150000
+methodology_summary,"Employee qualification percentages were determined through structured interviews with department managers and review of project commit histories. Contractor expenses were qualified based on contract review confirming rights retention and financial risk. Cloud computing costs were identified through AWS cost allocation tags."
+limitations,"Employee time allocations are estimates based on manager interviews in the absence of contemporaneous time tracking; Contractor amounts represent 65% of total payments per IRC Section 41(b)(3); Cloud computing costs were classified based on AWS cost allocation tags and may include minor non-research usage; This study relies on financial data provided by the client and assumes its accuracy and completeness"
+disclaimer_text,"This R&D tax credit study was prepared based on information provided by Acme Corporation. The conclusions are based on the facts and circumstances as understood at the time of preparation. This study is intended for tax compliance purposes and should not be construed as legal or accounting advice. Occams Advisory makes no representations regarding the ultimate acceptance of these credits by tax authorities."

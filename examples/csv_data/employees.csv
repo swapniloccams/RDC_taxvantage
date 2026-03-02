@@ -1,0 +1,3 @@
+employee_id,employee_name,job_title,department,location,w2_box_1_wages,qualified_percentage,qualification_basis,project_allocations,notes
+E001,Alice Johnson,Senior ML Engineer,Engineering - Data Science,"San Francisco, CA",180000,0.85,Interview,P001:0.85,"Lead engineer on ML model development. Time allocation based on manager interview and project commit history."
+E002,Bob Chen,ML Engineer,Engineering - Data Science,"San Francisco, CA",150000,0.70,Interview,P001:0.70,"Focused on training pipeline and data preprocessing. Allocation based on manager interview."

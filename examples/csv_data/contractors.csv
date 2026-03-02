@@ -1,0 +1,2 @@
+vendor_id,vendor_name,description_of_work,total_amount_paid,qualified_percentage,apply_65_percent_rule,company_retains_rights,company_bears_risk,contract_reference,project_allocations,notes
+V001,ML Consulting Partners LLC,Machine learning architecture consulting and model optimization services,75000,1.0,true,true,true,Contract #2024-ML-001 dated 2024-02-01,P001:1.0,"Contractor worked under company direction. All IP rights retained by Acme per contract terms."

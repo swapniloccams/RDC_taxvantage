@@ -1,0 +1,259 @@
+{
+    "study_metadata": {
+        "prepared_for": {
+            "legal_name": "Acme Corporation",
+            "ein": "12-3456789",
+            "entity_type": "C-Corp",
+            "address": "123 Main Street, San Francisco, CA 94105",
+            "industry": "Software Development",
+            "website": "https://acme.example.com"
+        },
+        "prepared_by": {
+            "firm_name": "Occams Advisory",
+            "preparer_name": "John Smith, CPA",
+            "date_prepared": "2024-03-15"
+        },
+        "tax_year": {
+            "year_label": "2024",
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "return_type": "Original"
+        },
+        "credit_method": "ASC",
+        "notes": "Initial R&D study for tax year 2024"
+    },
+    "company_background": {
+        "business_overview": "Acme Corporation develops enterprise SaaS solutions for digital asset management and workflow automation.",
+        "products_and_services": [
+            "Cloud-based digital asset management platform",
+            "AI-powered image recognition and tagging",
+            "Workflow automation tools"
+        ],
+        "rd_departments": [
+            "Engineering",
+            "Product Development",
+            "Data Science"
+        ],
+        "locations": [
+            "San Francisco, CA (Headquarters)",
+            "Austin, TX (Engineering)"
+        ],
+        "org_structure_summary": "Engineering team of 25 employees organized into platform, AI/ML, and infrastructure groups reporting to VP of Engineering."
+    },
+    "gross_receipts": {
+        "year_0": 5000000,
+        "year_minus_1": 4200000,
+        "year_minus_2": 3500000,
+        "year_minus_3": 2800000
+    },
+    "rd_projects": [
+        {
+            "project_id": "P001",
+            "project_name": "AI Image Recognition Engine",
+            "business_component": "Automated image tagging and classification system",
+            "start_date": "2024-01-15",
+            "end_date": "2024-11-30",
+            "status": "Completed",
+            "technical_summary": {
+                "objective": "Develop a machine learning model to automatically classify and tag digital images with 95%+ accuracy",
+                "problem_statement": "Manual image tagging is time-consuming and inconsistent. Existing ML models failed to achieve required accuracy for enterprise use.",
+                "technical_uncertainty": "Uncertainty regarding optimal neural network architecture, training data requirements, and real-time inference performance at scale.",
+                "hypotheses_tested": [
+                    "Transfer learning from ImageNet would provide sufficient base features",
+                    "Custom attention mechanisms would improve accuracy on domain-specific images",
+                    "Quantization could reduce model size without significant accuracy loss"
+                ],
+                "experimentation_process": [
+                    "Tested 5 different CNN architectures (ResNet, EfficientNet, Vision Transformer)",
+                    "Conducted ablation studies on attention mechanisms",
+                    "Benchmarked inference latency across different hardware configurations",
+                    "Iteratively refined training pipeline with data augmentation techniques"
+                ],
+                "alternatives_considered": [
+                    "Rule-based classification (rejected due to poor accuracy)",
+                    "Third-party API services (rejected due to cost and data privacy)",
+                    "Ensemble models (rejected due to latency constraints)"
+                ],
+                "results_or_outcome": "Achieved 96.5% accuracy with 150ms average inference time. Deployed to production serving 10M+ images/month.",
+                "failures_or_iterations": "Initial ResNet-50 model only achieved 87% accuracy. Required 3 major iterations and custom loss function to reach target."
+            },
+            "four_part_test": {
+                "permitted_purpose": "Research undertaken to develop new automated image classification capability for commercial digital asset management product.",
+                "technological_in_nature": "Development relied on computer science, machine learning, and mathematical optimization principles to create novel neural network architecture.",
+                "elimination_of_uncertainty": "Eliminated uncertainty regarding optimal model architecture, training methodology, and real-time performance requirements for production deployment.",
+                "process_of_experimentation": "Systematic testing of multiple architectures, hyperparameter tuning, ablation studies, and iterative refinement based on quantitative performance metrics."
+            },
+            "evidence_links": {
+                "jira_links": [
+                    "https://acme.atlassian.net/browse/ML-1234",
+                    "https://acme.atlassian.net/browse/ML-1567"
+                ],
+                "github_links": [
+                    "https://github.com/acme/ml-models/pull/456",
+                    "https://github.com/acme/ml-models/pull/489"
+                ],
+                "design_docs": [
+                    "docs/ml/image-recognition-architecture-v2.pdf",
+                    "docs/ml/training-pipeline-design.pdf"
+                ],
+                "test_reports": [
+                    "reports/ml/model-accuracy-benchmarks-2024-q2.xlsx",
+                    "reports/ml/inference-performance-tests.pdf"
+                ],
+                "deployment_logs": [
+                    "logs/ml/production-deployment-2024-11-30.log"
+                ],
+                "other_supporting_docs": [
+                    "Meeting notes from ML architecture review sessions",
+                    "Experiment tracking logs from MLflow"
+                ]
+            }
+        }
+    ],
+    "employees": [
+        {
+            "employee_id": "E001",
+            "employee_name": "Alice Johnson",
+            "job_title": "Senior ML Engineer",
+            "department": "Engineering - Data Science",
+            "location": "San Francisco, CA",
+            "w2_box_1_wages": 180000,
+            "qualified_percentage": 0.85,
+            "qualification_basis": "Interview",
+            "project_allocation": [
+                {
+                    "project_id": "P001",
+                    "percent_of_employee_time": 0.85
+                }
+            ],
+            "notes": "Lead engineer on ML model development. Time allocation based on manager interview and project commit history."
+        },
+        {
+            "employee_id": "E002",
+            "employee_name": "Bob Chen",
+            "job_title": "ML Engineer",
+            "department": "Engineering - Data Science",
+            "location": "San Francisco, CA",
+            "w2_box_1_wages": 150000,
+            "qualified_percentage": 0.70,
+            "qualification_basis": "Interview",
+            "project_allocation": [
+                {
+                    "project_id": "P001",
+                    "percent_of_employee_time": 0.70
+                }
+            ],
+            "notes": "Focused on training pipeline and data preprocessing. Allocation based on manager interview."
+        }
+    ],
+    "contractors": [
+        {
+            "vendor_id": "V001",
+            "vendor_name": "ML Consulting Partners LLC",
+            "description_of_work": "Machine learning architecture consulting and model optimization services",
+            "total_amount_paid": 75000,
+            "qualified_percentage": 1.0,
+            "contract_research_65_percent_rule_applies": true,
+            "rights_and_risk": {
+                "company_retains_rights": true,
+                "company_bears_financial_risk": true,
+                "supporting_contract_reference": "Contract #2024-ML-001 dated 2024-02-01"
+            },
+            "project_allocation": [
+                {
+                    "project_id": "P001",
+                    "percent_of_vendor_work": 1.0
+                }
+            ],
+            "notes": "Contractor worked under company direction. All IP rights retained by Acme per contract terms."
+        }
+    ],
+    "supplies": [
+        {
+            "supply_id": "S001",
+            "description": "GPU compute credits for model training",
+            "vendor": "AWS",
+            "invoice_reference": "AWS Invoice #INV-2024-Q2-ML",
+            "amount": 12000,
+            "qualified_percentage": 1.0,
+            "project_allocation": [
+                {
+                    "project_id": "P001",
+                    "percent_of_supply_usage": 1.0
+                }
+            ],
+            "notes": "EC2 P3 instances used exclusively for ML model training experiments"
+        }
+    ],
+    "cloud_computing": [
+        {
+            "cloud_id": "C001",
+            "provider": "AWS",
+            "service_category": "Compute",
+            "billing_reference": "AWS Cost Allocation Tag: project=ml-image-recognition",
+            "amount": 8500,
+            "qualified_percentage": 1.0,
+            "project_allocation": [
+                {
+                    "project_id": "P001",
+                    "percent_of_cloud_usage": 1.0
+                }
+            ],
+            "notes": "EC2 compute costs for training and experimentation"
+        },
+        {
+            "cloud_id": "C002",
+            "provider": "AWS",
+            "service_category": "Storage",
+            "billing_reference": "AWS Cost Allocation Tag: project=ml-image-recognition",
+            "amount": 2500,
+            "qualified_percentage": 1.0,
+            "project_allocation": [
+                {
+                    "project_id": "P001",
+                    "percent_of_cloud_usage": 1.0
+                }
+            ],
+            "notes": "S3 storage for training datasets and model artifacts"
+        }
+    ],
+    "qre_calculation_rules": {
+        "include_wages": true,
+        "include_supplies": true,
+        "include_cloud": true,
+        "include_contractors": true,
+        "contractor_eligibility_rate": 0.65,
+        "default_employee_qualification_basis": "Interview",
+        "allow_sampling_methodology": false,
+        "include_bonus_in_wages": true,
+        "exclude_foreign_research": true
+    },
+    "asc_calculation_inputs": {
+        "qre_prior_years_override": {
+            "enabled": true,
+            "year_minus_1_qre": 210000,
+            "year_minus_2_qre": 180000,
+            "year_minus_3_qre": 150000
+        }
+    },
+    "output_preferences": {
+        "currency": "USD",
+        "format": "StudyDocument",
+        "include_appendices": true,
+        "include_employee_detail_table": true,
+        "include_vendor_detail_table": true,
+        "include_project_narratives": true,
+        "include_four_part_test_table": true,
+        "include_form_6765_tie_out": true
+    },
+    "disclosures_and_assumptions": {
+        "methodology_summary": "Employee qualification percentages were determined through structured interviews with department managers and review of project commit histories. Contractor expenses were qualified based on contract review confirming rights retention and financial risk. Cloud computing costs were identified through AWS cost allocation tags.",
+        "limitations": [
+            "Employee time allocations are estimates based on manager interviews in the absence of contemporaneous time tracking",
+            "Contractor amounts represent 65% of total payments per IRC Section 41(b)(3)",
+            "Cloud computing costs were classified based on AWS cost allocation tags and may include minor non-research usage",
+            "This study relies on financial data provided by the client and assumes its accuracy and completeness"
+        ],
+        "disclaimer_text": "This R&D tax credit study was prepared based on information provided by Acme Corporation. The conclusions are based on the facts and circumstances as understood at the time of preparation. This study is intended for tax compliance purposes and should not be construed as legal or accounting advice. Occams Advisory makes no representations regarding the ultimate acceptance of these credits by tax authorities."
+    }
+}

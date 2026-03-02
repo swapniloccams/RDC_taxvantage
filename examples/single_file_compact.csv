@@ -1,0 +1,7 @@
+row_type,id,name_or_description,param_1,param_2,param_3,param_4,param_5,param_6,param_7,param_8,param_9,notes,extra_A,extra_B
+METADATA,12-3456789,Acme Corporation,C-Corp,"123 Main St, San Francisco, CA",Software Development,https://acme.com,Occams Advisory,"John Smith, CPA",2024,ASC,2024-01-01,"Methodology: Interviews used. Disclaimer: Tax compliance only.",5000000,4200000
+PROJECT,P001,AI Image Engine,Automated image tagging,2024-01-01,2024-11-30,Completed,"Objective: 95% accuracy model","Uncertainty: Optimal architecture?","Experimentation: Tested ResNet vs EfficientNet",,,,"Permitted Purpose: New capability","Technological: CS/ML"
+EMPLOYEE,E001,Alice Johnson,Senior ML Engineer,Engineering,San Francisco,180000,0.85,Interview,P001:0.85,,,,
+CONTRACTOR,V001,ML Consulting,Model Optimization,75000,1.00,TRUE,TRUE,TRUE,Contract #2024-001,P001:1.0,,,
+EXPENSE,S001,GPU Credits,supply,AWS,Invoice #INV-123,12000,1.00,P001:1.0,,,,,
+EXPENSE,C001,AWS Compute,cloud,AWS,Compute,8500,1.00,P001:1.0,AWS,Tag: ml-project,,,
