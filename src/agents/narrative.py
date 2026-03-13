@@ -41,9 +41,15 @@ def generate_executive_summary_tool(report_data_json: str = None, context: dict 
         for p in study.get("rd_projects", []):
             ts = p.get("technical_summary", {})
             obj = ts.get("objective", "")
+            # Include LLM-generated description if available for richer summary
+            gen = p.get("generated_narratives") or {}
+            desc = gen.get("project_description") or obj
             project_lines.append(
-                f"- {p['project_name']} ({p.get('status','')}):{(' ' + obj) if obj else ''}"
+                f"- {p['project_name']} ({p.get('status','')}):{(' ' + desc) if desc else ''}"
             )
+
+        # F2 golden_answer — client's own words about their R&D (blueprint requirement)
+        golden_answer = study.get("golden_answer") or ""
 
         info_collected = [
             "Employee W-2 wages and time allocations by project",
@@ -53,6 +59,12 @@ def generate_executive_summary_tool(report_data_json: str = None, context: dict 
             "Cloud computing and supply expenditures (where applicable)",
             "Supporting documentation (Jira tickets, GitHub repos, design docs)",
         ]
+
+        golden_instruction = (
+            f'\nOpen the first paragraph with this verbatim client quote: "{golden_answer}"\n'
+            if golden_answer
+            else ""
+        )
 
         prompt = f"""You are writing the Executive Summary for a Federal R&D Tax Credit Study prepared by Occams Advisory.
 
@@ -67,11 +79,10 @@ Qualified Research Projects:
 Information Collected:
 {chr(10).join('• ' + item for item in info_collected)}
 
-Write a professional executive summary that:
-1. Opens with a paragraph stating Occams Advisory performed a Federal R&D Tax Credit study for {client_name} for tax year {tax_year}.
-2. Summarises the methodology at a high level (one paragraph).
-3. Includes a bullet list titled "Information Collected:" using the items above.
-4. Closes with a statement of the total Federal credit of {federal_credit}.
+Write a 3-paragraph professional executive summary:
+{golden_instruction}Paragraph 1: Describe the business and its R&D activities using the project list above.
+Paragraph 2: Summarise the qualification methodology — how time allocations, technical uncertainties, and experimentation processes were documented.
+Paragraph 3: State the total QREs of {total_qre} and federal R&D credit of {federal_credit} using the ASC method.
 
 CRITICAL: Only use the facts listed above. Do not invent technical details. Do not use hedging language."""
 
@@ -226,6 +237,22 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
             source_answers=source_answers,
         ) if tech_facts else PLACEHOLDER_TEXT
 
+        # vii) Resolution — how and when uncertainty was resolved (blueprint §4 sub-section 5)
+        res_facts = [f for f in [
+            ts.get("results_or_outcome"),
+            ts.get("failures_or_iterations"),
+            fpt.get("elimination_of_uncertainty"),
+        ] if f]
+        narratives["resolution"] = _generate_narrative(
+            oai_client, model,
+            "Resolution",
+            res_facts,
+            f"Describe how and when the technical uncertainty in project '{project_name}' was resolved. "
+            "Include what the team ultimately learned, the final outcome, and any remaining open questions. "
+            "Write 1 paragraph. Reference specific results, experiments, or milestones where available.",
+            source_answers=source_answers,
+        ) if res_facts else PLACEHOLDER_TEXT
+
         # Store generated narratives back into study_data for renderer and compliance
         context["study_data"]["rd_projects"][project_index]["generated_narratives"] = narratives
 
@@ -341,11 +368,12 @@ Structured facts:
 {instruction}
 
 CRITICAL RULES:
-- Only use the facts and interview answers provided above.
+- Use ALL the structured facts provided above. Even if they are brief, synthesize them into a
+  coherent narrative. You have enough data to write a proper section.
 - Do NOT invent technical details, technologies, numbers, or claims not present in the input.
 - Do NOT rephrase vague statements into confident technical assertions.
-- If the facts and answers are insufficient for a complete section, write:
-  "Analyst input required: [describe exactly what is missing]"
+- Do NOT write "Analyst input required" — the structured facts above are sufficient to produce
+  a complete section. Write the best narrative you can from the available data.
 - Do not use hedging language such as "may", "could", "possibly", or "might"."""
 
     response = client.chat.completions.create(
@@ -355,6 +383,90 @@ CRITICAL RULES:
     )
 
     return response.choices[0].message.content.strip()
+
+
+def generate_employee_activity_narrative_tool(employee_index: int = 0, context: dict = None) -> dict:
+    """
+    Tool: Generate a 2-3 sentence activity narrative for a single employee.
+
+    Uses D1 (rd_activities_description), D2 (activity_type), D4 (owner_officer_detail)
+    plus the employee's source_answers to write the §6 narrative paragraph per the blueprint.
+
+    Args:
+        employee_index: Index of employee to generate narrative for
+        context: Shared context dictionary
+
+    Returns:
+        dict with status and narrative text
+    """
+    if not context or "study_data" not in context:
+        return {"error": "No study_data in context"}
+
+    employees = context["study_data"].get("employees", [])
+    if employee_index >= len(employees):
+        return {"error": f"Invalid employee index {employee_index} — only {len(employees)} employee(s) loaded"}
+
+    emp = employees[employee_index]
+    oai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+
+    name = emp.get("employee_name", f"Employee {employee_index + 1}")
+    title = emp.get("job_title", "")
+    activity_type = (emp.get("activity_type") or "direct_research").replace("_", " ")
+    rd_desc = emp.get("rd_activities_description") or ""
+    officer_detail = emp.get("owner_officer_detail") or ""
+    source_answers = emp.get("source_answers") or {}
+    allocs = emp.get("project_allocation") or []
+    project_ids = [a.get("project_id", "") for a in allocs if a.get("project_id")]
+
+    facts = [f for f in [rd_desc, officer_detail] if f]
+    if not facts and not source_answers:
+        narrative = (
+            f"Analyst input required: No activity description (D1/D4) provided for "
+            f"{name} ({title}) — describe the specific qualified research activities they performed."
+        )
+    else:
+        source_text = ""
+        if source_answers:
+            lines = "\n".join(f"  [{qid}] {ans}" for qid, ans in source_answers.items())
+            source_text = f"\nRaw interview answers:\n{lines}"
+
+        officer_clause = (
+            f" Note: {name} is an owner/officer — exclude general management, "
+            f"business development, and non-technical activities. {officer_detail}"
+            if emp.get("is_owner_officer") else ""
+        )
+
+        prompt = f"""Write 2-3 sentences describing the R&D activities of {name} ({title}) for an IRS R&D tax credit study.
+
+Activity type: {activity_type}
+Projects contributed to: {', '.join(project_ids) or 'see project list'}
+Description of R&D work: {rd_desc or '(see interview answers below)'}
+{source_text}
+{officer_clause}
+
+Requirements:
+- Be specific and technical — reference actual research activities, not job titles.
+- Write in formal third-person.
+- Do NOT mention salary figures.
+- Do NOT invent technical details not present in the input.
+- If insufficient data, write: "Analyst input required: [what is missing]"
+"""
+        response = oai_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+        )
+        narrative = response.choices[0].message.content.strip()
+
+    # Store in study_data for renderer
+    context["study_data"]["employees"][employee_index]["generated_activity_narrative"] = narrative
+
+    return {
+        "status": "success",
+        "employee_name": name,
+        "narrative": narrative,
+    }
 
 
 def handoff_to_compliance(context: dict = None) -> Handoff:
@@ -413,20 +525,44 @@ For each project, use these exact headings:
    v)   Process of Experimentation    ← use four_part_test.process_of_experimentation + experimentation_process + source_answers
    vi)  Technological in Nature       ← use four_part_test.technological_in_nature + source_answers
 
-=== Tool usage (follow exactly) ===
-1. Call generate_executive_summary_tool()
-2. Call generate_project_narratives_tool(project_index=0) for first project
-3. Call generate_project_narratives_tool(project_index=N) for each subsequent project
-4. AFTER all projects, MUST call handoff_to_compliance()
+=== FIRST-TIME GENERATION (follow EXACTLY — this order is mandatory) ===
+1. Call generate_project_narratives_tool(project_index=0) for first project
+2. Call generate_project_narratives_tool(project_index=N) for each subsequent project
+3. Call generate_employee_activity_narrative_tool(employee_index=0) for first employee
+4. Call generate_employee_activity_narrative_tool(employee_index=N) for each subsequent employee
+5. Call generate_executive_summary_tool() — LAST, after all project and employee narratives are complete
+6. Call handoff_to_compliance()
 
-CRITICAL: Do NOT end your turn without calling handoff_to_compliance().
+CRITICAL ORDER RULE: Executive summary MUST be generated LAST — it synthesizes all completed
+project narratives and employee descriptions. Calling it first produces an incomplete summary.
+
+=== REVISION MODE — when sent back from ComplianceAgent due to compliance failures ===
+You have been returned here because the ComplianceAgent found ERROR-level issues in the narratives.
+DO NOT output chat text. DO NOT call handoff_to_compliance immediately.
+You MUST fix the issues using tool calls first:
+
+1. For EVERY project that has a compliance ERROR, call generate_project_narratives_tool(project_index=N)
+   again to regenerate all 6 narratives for that project with the full structured data now available.
+2. For EVERY employee that has a compliance ERROR or "Analyst input required" text, call
+   generate_employee_activity_narrative_tool(employee_index=N) again.
+3. After all affected projects and employees are regenerated, call generate_executive_summary_tool()
+4. Then call handoff_to_compliance()
+
+CRITICAL: In revision mode, you MUST call the generate_* tools — outputting text without tool calls
+will cause an infinite loop. If you have nothing to regenerate, still call handoff_to_compliance()
+as a tool call (NOT as chat text).
 
 === Chat output rules ===
 - Do NOT reproduce, summarise, or quote any of the generated narrative text in your chat messages.
 - Do NOT write out executive summary paragraphs, project descriptions, or any report content as chat text.
 - Your only chat messages should be brief status lines such as:
-    "Generating executive summary..." or "Narratives complete, handing off to compliance."
+    "Generating executive summary..." or "Revising sections with compliance issues..."
 - All narrative content belongs inside the tool calls only.
 """,
-    functions=[generate_executive_summary_tool, generate_project_narratives_tool, handoff_to_compliance],
+    functions=[
+        generate_executive_summary_tool,
+        generate_project_narratives_tool,
+        generate_employee_activity_narrative_tool,
+        handoff_to_compliance,
+    ],
 )

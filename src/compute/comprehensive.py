@@ -174,6 +174,11 @@ def calculate_asc_credit(current_qre: Decimal, study_data: dict) -> Dict:
     excess_qre = max(current_qre - base_amount, Decimal("0"))
     credit = excess_qre * Decimal("0.14")
     
+    # Startup / payroll-tax-offset flags (default False if not present)
+    business_flags = study_data.get("business_flags") or {}
+    is_startup = bool(business_flags.get("is_startup", False))
+    payroll_offset = bool(business_flags.get("payroll_tax_offset_eligible", False))
+
     return {
         "current_year_qre": current_qre,
         "prior_year_1_qre": year_1,
@@ -183,8 +188,34 @@ def calculate_asc_credit(current_qre: Decimal, study_data: dict) -> Dict:
         "base_amount": base_amount,
         "excess_qre": excess_qre,
         "credit_rate": "14%",
-        "federal_credit": credit
+        "federal_credit": credit,
+        "is_startup": is_startup,
+        "payroll_tax_offset_eligible": payroll_offset,
     }
+
+
+def calculate_all_qre_multi_year(multi_year_study_data: list) -> list:
+    """
+    Run calculate_all_qre() for each year in a multi-year study.
+
+    Args:
+        multi_year_study_data: List of RDStudyData dicts, one per tax year (oldest → newest).
+
+    Returns:
+        List of per-year result dicts, each containing all fields from calculate_all_qre()
+        plus a 'year_label' key for identification.
+    """
+    results = []
+    for year_study in multi_year_study_data:
+        year_label = year_study["study_metadata"]["tax_year"]["year_label"]
+        try:
+            year_result = calculate_all_qre(year_study)
+            year_result["year_label"] = year_label
+            year_result["client_name"] = year_study["study_metadata"]["prepared_for"]["legal_name"]
+            results.append(year_result)
+        except Exception as exc:
+            raise ValueError(f"QRE calculation failed for tax year {year_label}: {exc}") from exc
+    return results
 
 
 def calculate_all_qre(study_data: dict) -> Dict:
@@ -213,11 +244,44 @@ def calculate_all_qre(study_data: dict) -> Dict:
     # ASC credit
     asc_results = calculate_asc_credit(total_qre, study_data)
     
+    # Build qre_summary — mirrors blueprint qre_summary{} in Input 1
+    asc_comp = asc_results
+    credit_method = "Startup_Payroll" if asc_comp.get("payroll_tax_offset_eligible") else "ASC"
+    qre_summary = {
+        "total_qualified_wages": float(employee_results["total_employee_qre"]),
+        "total_qualified_contractors": float(contractor_results["total_contractor_qre"]),
+        "total_qualified_supplies": float(supplies_cloud_results["total_supplies_qre"]),
+        "total_qualified_cloud": float(supplies_cloud_results["total_cloud_qre"]),
+        "total_qre": float(total_qre),
+        "avg_qre_prior_3_years": float(asc_comp.get("avg_prior_qre", 0)),
+        "asc_base_amount": float(asc_comp.get("base_amount", 0)),
+        "asc_excess_qre": float(asc_comp.get("excess_qre", 0)),
+        "asc_credit": float(asc_comp.get("federal_credit", 0)),
+        "credit_method_used": credit_method,
+    }
+
+    # Arithmetic cross-check — blueprint processing Step 2: "Halt if mismatch"
+    component_sum = (
+        qre_summary["total_qualified_wages"]
+        + qre_summary["total_qualified_contractors"]
+        + qre_summary["total_qualified_supplies"]
+        + qre_summary["total_qualified_cloud"]
+    )
+    discrepancy = abs(component_sum - qre_summary["total_qre"])
+    if discrepancy > 0.01:
+        raise ValueError(
+            f"QRE arithmetic mismatch: component sum ${component_sum:,.2f} ≠ "
+            f"total_qre ${qre_summary['total_qre']:,.2f} (diff=${discrepancy:,.2f}). "
+            "Blueprint processing rule: halt before generating any content. "
+            "Check calculate_employee_qre / contractor / supplies functions."
+        )
+
     # Combine all results
     return {
         **employee_results,
         **contractor_results,
         **supplies_cloud_results,
         "total_qre": total_qre,
-        "asc_computation": asc_results
+        "asc_computation": asc_results,
+        "qre_summary": qre_summary,
     }

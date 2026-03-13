@@ -47,6 +47,13 @@ class QualificationBasis(str, Enum):
     MANAGER_ESTIMATE = "Manager Estimate"
 
 
+class ActivityType(str, Enum):
+    """Employee activity type for R&D qualification."""
+    DIRECT_RESEARCH = "direct_research"
+    SUPERVISION = "supervision"
+    SUPPORT = "support"
+
+
 # ============================================================================
 # Study Metadata
 # ============================================================================
@@ -59,6 +66,12 @@ class PreparedFor(BaseModel):
     address: str = Field(..., min_length=1)
     industry: str = Field(..., min_length=1)
     website: Optional[str] = None
+    dba: Optional[str] = Field(None, description="DBA / trading name if different from legal name")
+    state_of_incorporation: Optional[str] = Field(None, description="State where the entity is incorporated")
+    states_of_operation: List[str] = Field(
+        default_factory=list,
+        description="All states where qualified research activities were performed",
+    )
 
 
 class PreparedBy(BaseModel):
@@ -217,6 +230,17 @@ class Employee(BaseModel):
     w2_box_1_wages: Decimal = Field(..., ge=0)
     qualified_percentage: float = Field(..., ge=0.0, le=1.0)
     qualification_basis: QualificationBasis = QualificationBasis.INTERVIEW
+    activity_type: ActivityType = ActivityType.DIRECT_RESEARCH
+    is_owner_officer: bool = False
+    source_doc: Optional[str] = Field(None, description="W-2 / payroll report filename for audit evidence")
+    rd_activities_description: Optional[str] = Field(
+        None,
+        description="D1 — Narrative description of what this employee did on R&D (feeds §6 activity paragraph)",
+    )
+    owner_officer_detail: Optional[str] = Field(
+        None,
+        description="D4 — Owner/officer specific technical activity detail (excludes management/biz-dev time)",
+    )
     project_allocation: List[ProjectAllocation] = Field(..., min_items=1)
     notes: Optional[str] = None
     source_answers: Optional[Dict[str, str]] = Field(
@@ -243,9 +267,12 @@ class Contractor(BaseModel):
     description_of_work: str = Field(..., min_length=1)
     total_amount_paid: Decimal = Field(..., ge=0)
     qualified_percentage: float = Field(..., ge=0.0, le=1.0)
+    us_based: bool = Field(True, description="Must be True — foreign research is excluded from QRE")
+    is_funded: bool = Field(False, description="True if this contractor's work was funded by a third party — may be excluded")
     contract_research_65_percent_rule_applies: bool = True
     rights_and_risk: RightsAndRisk
     project_allocation: List[ProjectAllocation] = Field(..., min_items=1)
+    source_docs: List[str] = Field(default_factory=list, description="1099 / invoice filenames for audit evidence")
     notes: Optional[str] = None
     source_answers: Optional[Dict[str, str]] = Field(
         default_factory=dict,
@@ -265,6 +292,8 @@ class Supply(BaseModel):
     invoice_reference: str = Field(..., min_length=1)
     amount: Decimal = Field(..., ge=0)
     qualified_percentage: float = Field(..., ge=0.0, le=1.0)
+    consumed_in_research: bool = True
+    source_docs: List[str] = Field(default_factory=list, description="Invoice filenames for audit evidence")
     project_allocation: List[ProjectAllocation] = Field(..., min_items=1)
     notes: Optional[str] = None
 
@@ -320,6 +349,97 @@ class ASCCalculationInputs(BaseModel):
 
 
 # ============================================================================
+# Business Flags
+# ============================================================================
+
+class BusinessFlags(BaseModel):
+    """Flags that affect credit eligibility and calculation path."""
+    is_startup: bool = Field(
+        False,
+        description="True if company qualifies as a startup (≤5 years old, ≤$5M gross receipts) — enables payroll tax offset",
+    )
+    payroll_tax_offset_eligible: bool = Field(
+        False,
+        description="True if company can apply R&D credit against payroll taxes instead of income tax",
+    )
+    funded_by_third_party: bool = Field(
+        False,
+        description="True if any research was funded by customers, grants, or third parties — limits QRE eligibility",
+    )
+    # Blueprint alias — funded_research_exists is the term used in agent3_blueprint.docx
+    funded_research_exists: bool = Field(
+        False,
+        description="Alias for funded_by_third_party — use either field; both are checked by the renderer",
+    )
+    wages_used_for_other_credits: bool = Field(
+        False,
+        description="True if wages were claimed under other credits (ERC, WOTC, etc.) — prevents double-counting",
+    )
+    prior_credit_claimed: bool = Field(
+        False,
+        description="True if Form 6765 has been filed in a prior year",
+    )
+    prior_6765_years: List[str] = Field(
+        default_factory=list,
+        description="Years in which Form 6765 was previously filed, e.g. ['2021', '2022']",
+    )
+    prior_qre_amounts: Dict[str, Decimal] = Field(
+        default_factory=dict,
+        description="Prior-year QRE amounts keyed by year string, e.g. {'2021': 85000, '2022': 112000}",
+    )
+    section_174_filed: bool = Field(
+        False,
+        description="True if IRC §174 amortization schedule has been filed for this tax year",
+    )
+
+
+# ============================================================================
+# Interview Metadata
+# ============================================================================
+
+class InterviewMetadata(BaseModel):
+    """
+    Tracks the completion status of the Input 2 interview session.
+
+    Blueprint Validation Rule 8 requires status = 'complete' before
+    Agent 3 generates any content.
+    """
+    status: str = Field(
+        default="pending",
+        description="'complete' | 'pending_followup' — must be 'complete' to proceed",
+    )
+    interviewer: Optional[str] = Field(None, description="Name of the consultant who conducted the interview")
+    interview_date: Optional[str] = Field(None, description="Date the interview was completed (YYYY-MM-DD)")
+    notes: Optional[str] = Field(None, description="Any follow-up items or caveats from the interview")
+
+
+# ============================================================================
+# QRE Summary
+# ============================================================================
+
+class QRESummary(BaseModel):
+    """
+    Pre-computed QRE totals — mirrors the blueprint's qre_summary{} object in Input 1.
+
+    Populated by ComputationAgent after running calculate_all_qre().
+    Used directly in §10 Credit Calculation without further arithmetic.
+    """
+    total_qualified_wages: Decimal = Field(Decimal("0"), ge=0)
+    total_qualified_contractors: Decimal = Field(Decimal("0"), ge=0)
+    total_qualified_supplies: Decimal = Field(Decimal("0"), ge=0)
+    total_qualified_cloud: Decimal = Field(Decimal("0"), ge=0)
+    total_qre: Decimal = Field(Decimal("0"), ge=0)
+    avg_qre_prior_3_years: Decimal = Field(Decimal("0"), ge=0)
+    asc_base_amount: Decimal = Field(Decimal("0"), ge=0)
+    asc_excess_qre: Decimal = Field(Decimal("0"), ge=0)
+    asc_credit: Decimal = Field(Decimal("0"), ge=0)
+    credit_method_used: str = Field(
+        default="ASC",
+        description="'ASC' | 'Regular' | 'Startup_Payroll'",
+    )
+
+
+# ============================================================================
 # Output Preferences
 # ============================================================================
 
@@ -362,8 +482,25 @@ class RDStudyData(BaseModel):
     cloud_computing: List[CloudComputing] = Field(default_factory=list)
     qre_calculation_rules: QRECalculationRules = Field(default_factory=QRECalculationRules)
     asc_calculation_inputs: ASCCalculationInputs = Field(default_factory=ASCCalculationInputs)
+    business_flags: BusinessFlags = Field(default_factory=BusinessFlags)
     output_preferences: OutputPreferences = Field(default_factory=OutputPreferences)
     disclosures_and_assumptions: DisclosuresAndAssumptions
+    golden_answer: Optional[str] = Field(
+        None,
+        description="F2 — client's own words describing their qualified research activities (used in Executive Summary)",
+    )
+    interview_metadata: Optional[InterviewMetadata] = Field(
+        default_factory=InterviewMetadata,
+        description="Tracks interview completion status — must be 'complete' before generation proceeds",
+    )
+    qre_summary: Optional[QRESummary] = Field(
+        default_factory=QRESummary,
+        description="Pre-computed QRE totals populated by ComputationAgent — mirrors blueprint qre_summary{}",
+    )
+    additional_documentation: List[str] = Field(
+        default_factory=list,
+        description="F1 — additional document filenames mentioned during the interview not already in source arrays",
+    )
     interview_responses: Optional[Dict[str, str]] = Field(
         default_factory=dict,
         description="Global questionnaire answers keyed by question_id for full traceability"
@@ -385,4 +522,37 @@ class RDStudyData(BaseModel):
         employee_ids = [e.employee_id for e in v]
         if len(employee_ids) != len(set(employee_ids)):
             raise ValueError('Employee IDs must be unique')
+        return v
+
+
+# ============================================================================
+# Multi-Year Study Wrapper
+# ============================================================================
+
+class MultiYearStudyData(BaseModel):
+    """
+    Wrapper for multi-year R&D studies (2–5 tax years in a single JSON input).
+
+    Each element of tax_years is a complete RDStudyData object for one year.
+    Years must be in chronological order (oldest → newest).
+    The pipeline uses the most-recent year for narrative generation and renders
+    per-year QRE schedules plus a combined multi-year summary table.
+    """
+    study_title: str = Field(..., min_length=1, description="Human-readable title for the combined study document")
+    combined_credit_method: CreditMethod = Field(
+        CreditMethod.ASC,
+        description="Credit calculation method applied to all years (currently only ASC supported for multi-year)",
+    )
+    tax_years: List[RDStudyData] = Field(
+        ...,
+        description="List of complete RDStudyData objects, one per tax year, ordered oldest to newest",
+    )
+
+    @field_validator("tax_years")
+    @classmethod
+    def validate_min_two_years(cls, v):
+        if len(v) < 2:
+            raise ValueError("multi_year_study must contain at least 2 tax years")
+        if len(v) > 5:
+            raise ValueError("multi_year_study supports a maximum of 5 tax years")
         return v

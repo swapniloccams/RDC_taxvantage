@@ -4,7 +4,7 @@ import json
 from decimal import Decimal
 from src.schema import ReportData, Expenditure
 from src.compute import calculate_total_qres, calculate_federal_credit
-from src.compute.comprehensive import calculate_all_qre
+from src.compute.comprehensive import calculate_all_qre, calculate_all_qre_multi_year
 from src.agents.framework import Agent, Handoff
 
 
@@ -143,6 +143,10 @@ def calculate_comprehensive_qre(context: dict = None) -> dict:
         
         # Store results in context
         context.update(results)
+
+        # Write qre_summary back into study_data so RenderAgent can access it directly
+        if "qre_summary" in results and isinstance(study_data, dict):
+            study_data["qre_summary"] = results["qre_summary"]
         
         return {
             "status": "success",
@@ -152,7 +156,8 @@ def calculate_comprehensive_qre(context: dict = None) -> dict:
             "total_supplies_qre": str(results["total_supplies_qre"]),
             "total_cloud_qre": str(results["total_cloud_qre"]),
             "total_qre": str(results["total_qre"]),
-            "federal_credit": str(results["asc_computation"]["federal_credit"])
+            "federal_credit": str(results["asc_computation"]["federal_credit"]),
+            "qre_summary": results.get("qre_summary", {}),
         }
         
     except Exception as e:
@@ -160,6 +165,56 @@ def calculate_comprehensive_qre(context: dict = None) -> dict:
             "status": "error",
             "message": f"Calculation failed: {type(e).__name__}: {e}"
         }
+
+
+def calculate_multi_year_qre(context: dict = None) -> dict:
+    """
+    Tool: Calculate QRE for all years in a multi-year study.
+
+    Reads context['multi_year_study_data'] (list of per-year RDStudyData dicts),
+    runs calculate_all_qre() per year, and stores results in:
+      context['multi_year_qre_results']  — list of per-year QRE result dicts
+      context['study_data']['qre_summary'] — QRE summary of the most-recent year
+
+    Args:
+        context: Must contain 'multi_year_study_data' from MultiYearJSONIngestionAgent.
+
+    Returns:
+        Status dict with per-year QRE totals.
+    """
+    try:
+        multi_year_data = context.get("multi_year_study_data")
+        if not multi_year_data:
+            return {"status": "error", "message": "No multi_year_study_data in context"}
+
+        results = calculate_all_qre_multi_year(multi_year_data)
+        context["multi_year_qre_results"] = results
+
+        # Also run for the most-recent year and write back into study_data
+        # so that the existing single-year pipeline (NarrativeAgent, RenderAgent) works unmodified.
+        latest_result = results[-1]
+        context.update({k: v for k, v in latest_result.items() if k != "year_label"})
+        if "qre_summary" in latest_result and isinstance(context.get("study_data"), dict):
+            context["study_data"]["qre_summary"] = latest_result["qre_summary"]
+
+        summary_lines = []
+        combined_credit = 0.0
+        for r in results:
+            credit = float(r["asc_computation"]["federal_credit"])
+            combined_credit += credit
+            summary_lines.append(
+                f"  {r['year_label']}: QRE=${float(r['total_qre']):,.0f}  ASC Credit=${credit:,.0f}"
+            )
+
+        return {
+            "status": "success",
+            "message": f"Multi-year QRE calculations complete for {len(results)} years",
+            "per_year_summary": summary_lines,
+            "combined_federal_credit": f"${combined_credit:,.0f}",
+        }
+
+    except Exception as exc:
+        return {"status": "error", "message": f"Multi-year calculation failed: {type(exc).__name__}: {exc}"}
 
 
 def handoff_to_narrative(context: dict = None) -> Handoff:
@@ -213,6 +268,10 @@ Your responsibilities:
 
 Process — choose the path based on context keys:
 
+PATH D — Multi-year JSON input (context has 'is_multi_year' == True):
+  1. call calculate_multi_year_qre()
+  2. then call handoff_to_narrative()
+
 PATH A — Questionnaire input (context has 'input_type' == 'questionnaire'):
   1. call calculate_comprehensive_qre()
   2. then call handoff_to_narrative()
@@ -221,7 +280,7 @@ PATH A — Questionnaire input (context has 'input_type' == 'questionnaire'):
 
 PATH B — Comprehensive CSV/JSON input (context has 'input_format' == 'comprehensive_csv' or 'comprehensive_json'):
   1. call calculate_comprehensive_qre()
-  2. then call handoff_to_render()
+  2. then call handoff_to_narrative()
 
 PATH C — Legacy CSV input (neither of the above):
   1. call calculate_expenditures()
@@ -232,5 +291,5 @@ Rules:
 - Always call the appropriate handoff after calculations — never stop without a handoff.
 - If inputs required for computation are missing, return a structured error listing missing fields and stop.
 """,
-    functions=[calculate_expenditures, calculate_comprehensive_qre, handoff_to_narrative, handoff_to_render],
+    functions=[calculate_expenditures, calculate_comprehensive_qre, calculate_multi_year_qre, handoff_to_narrative, handoff_to_render],
 )

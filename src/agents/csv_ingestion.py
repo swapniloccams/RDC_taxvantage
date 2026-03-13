@@ -31,6 +31,8 @@ def parse_single_csv(context: dict = None) -> dict:
         
         # Containers
         metadata = {}
+        metadata_ext = {}
+        golden_answer = None
         projects = []
         employees = []
         contractors = []
@@ -43,6 +45,10 @@ def parse_single_csv(context: dict = None) -> dict:
             try:
                 if rtype == "METADATA":
                     metadata = _parse_metadata_row(row)
+                elif rtype == "METADATA_EXT":
+                    metadata_ext = _parse_metadata_ext_row(row)
+                elif rtype == "METADATA_GOLDEN":
+                    golden_answer = _parse_golden_row(row)
                 elif rtype == "PROJECT":
                     projects.append(_parse_project_row(row))
                 elif rtype == "EMPLOYEE":
@@ -60,10 +66,31 @@ def parse_single_csv(context: dict = None) -> dict:
                 print(f"Error parsing row {index} ({rtype}): {e}")
                 # Continue parsing other rows, but log warning
 
+        # Merge METADATA_EXT into company_background and business_flags
+        company_bg = metadata.get("company_background", {})
+        if metadata_ext:
+            # Overlay richer narrative fields from METADATA_EXT
+            if metadata_ext.get("business_overview"):
+                company_bg["business_overview"] = metadata_ext["business_overview"]
+            if metadata_ext.get("technical_complexity"):
+                company_bg["technical_complexity"] = metadata_ext["technical_complexity"]
+            if metadata_ext.get("rd_culture"):
+                company_bg["rd_culture"] = metadata_ext["rd_culture"]
+
+        base_meta = metadata.get("study_metadata", {})
+        prepared_for = base_meta.get("prepared_for", {})
+        if metadata_ext:
+            prepared_for["dba"] = metadata_ext.get("dba") or prepared_for.get("dba", "")
+            prepared_for["state_of_incorporation"] = metadata_ext.get("state_of_incorporation") or prepared_for.get("state_of_incorporation", "")
+            prepared_for["states_of_operation"] = metadata_ext.get("states_of_operation") or prepared_for.get("states_of_operation", [])
+        base_meta["prepared_for"] = prepared_for
+
+        business_flags = metadata_ext.get("business_flags", {}) if metadata_ext else {}
+
         # Construct RDStudyData dict
         study_dict = {
-            "study_metadata": metadata.get("study_metadata", {}),
-            "company_background": metadata.get("company_background", {}),
+            "study_metadata": base_meta,
+            "company_background": company_bg,
             "gross_receipts": metadata.get("gross_receipts", {}),
             "asc_calculation_inputs": metadata.get("asc_calculation_inputs", {}),
             "rd_projects": projects,
@@ -73,7 +100,9 @@ def parse_single_csv(context: dict = None) -> dict:
             "cloud_computing": cloud,
             "qre_calculation_rules": _default_calculation_rules(),
             "output_preferences": {"format": "StudyDocument", "currency": "USD"},
-            "disclosures_and_assumptions": metadata.get("disclosures", {})
+            "disclosures_and_assumptions": metadata.get("disclosures", {}),
+            "business_flags": business_flags,
+            "golden_answer": golden_answer,
         }
         
         # Validate with Pydantic
@@ -81,7 +110,8 @@ def parse_single_csv(context: dict = None) -> dict:
         try:
             print("Validating Parsed Data against Schema...")
             study_obj = RDStudyData(**study_dict)
-            context["study_data"] = study_obj.model_dump()
+            # Use model_dump_json → parse cycle so all enums become plain strings
+            context["study_data"] = json.loads(study_obj.model_dump_json())
             context["input_format"] = "comprehensive_csv"
             
             return {
@@ -142,11 +172,17 @@ def _parse_metadata_row(row):
             "credit_method": row.get("param_8", "ASC")
         },
         "company_background": {
-             "business_overview": "From CSV Metadata",
-             "products_and_services": ["Software"],
-             "rd_departments": ["Engineering"],
+             "business_overview": (
+                 f"{row.get('name_or_description', 'The company')} is a company in the "
+                 f"{row.get('param_3', 'technology')} industry."
+             ),
+             "products_and_services": [row.get("param_3", "Software products")],
+             "rd_departments": ["Engineering", "Research & Development"],
              "locations": [row.get("param_2", "")],
-             "org_structure_summary": "See breakdown"
+             "org_structure_summary": (
+                 f"The company operates out of {row.get('param_2', 'its primary office')}. "
+                 "R&D activities are conducted by the engineering and research teams."
+             ),
         },
         "gross_receipts": {
              "year_0": _safe_float(row.get("extra_A")),
@@ -169,7 +205,71 @@ def _parse_metadata_row(row):
         }
     }
 
+def _parse_metadata_ext_row(row):
+    """
+    Parse a METADATA_EXT row — carries QA1/QA2/QA3 narrative answers and
+    business identity extension fields (DBA, state_of_incorporation, etc.).
+
+    Column mapping:
+      id                   → state_of_incorporation (also used for states_of_operation)
+      name_or_description  → DBA name (if any)
+      param_1              → is_startup (TRUE/FALSE)
+      param_2              → section_174_filed (TRUE/FALSE)
+      param_3              → funded_research_exists (TRUE/FALSE)
+      param_4              → payroll_tax_offset_eligible (TRUE/FALSE)
+      param_5              → wages_used_for_other_credits (TRUE/FALSE)
+      notes                → QA1 — business description (technical narrative)
+      extra_A              → QA2 — technical complexity vs. competitors
+      extra_B              → QA3 — R&D culture (ongoing vs. project-based)
+    """
+    def _bool(val):
+        return str(val or "").upper().strip() == "TRUE"
+
+    states_raw = row.get("id", "")
+    states = [s.strip() for s in states_raw.split(";") if s.strip()] if states_raw else []
+
+    return {
+        "state_of_incorporation": states[0] if states else "",
+        "states_of_operation": states,
+        "dba": row.get("name_or_description", "").strip() or None,
+        "business_flags": {
+            "is_startup": _bool(row.get("param_1")),
+            "section_174_filed": _bool(row.get("param_2")),
+            "funded_research_exists": _bool(row.get("param_3")),
+            "funded_by_third_party": _bool(row.get("param_3")),
+            "payroll_tax_offset_eligible": _bool(row.get("param_4")),
+            "wages_used_for_other_credits": _bool(row.get("param_5")),
+        },
+        "business_overview": row.get("notes", "").strip() or None,
+        "technical_complexity": row.get("extra_A", "").strip() or None,
+        "rd_culture": row.get("extra_B", "").strip() or None,
+    }
+
+
+def _parse_golden_row(row):
+    """
+    Parse a METADATA_GOLDEN row — carries the QF2 verbatim client quote
+    used as the opening of the Executive Summary.
+
+    Column mapping:
+      notes  → golden_answer (QF2 verbatim quote)
+    """
+    return (row.get("notes") or "").strip() or None
+
+
 def _parse_project_row(row):
+    resolution   = row.get("param_8", "")
+    failures     = row.get("param_9", "")
+    uncertainty  = row.get("param_6", "")
+    experimentation = row.get("param_7", "")
+
+    # Build a combined elimination_of_uncertainty that includes both the
+    # uncertainty description (param_6) and the resolution (param_8) so the
+    # NarrativeAgent has everything it needs for that four-part-test section.
+    elim_of_uncertainty = uncertainty
+    if resolution:
+        elim_of_uncertainty = f"{uncertainty}\n{resolution}".strip()
+
     return {
         "project_id": row.get("id"),
         "project_name": row.get("name_or_description"),
@@ -180,18 +280,18 @@ def _parse_project_row(row):
         "technical_summary": {
             "objective": row.get("param_5", ""),
             "problem_statement": row.get("param_5", ""),
-            "technical_uncertainty": row.get("param_6", ""),
-            "experimentation_process": [row.get("param_7", "")],
+            "technical_uncertainty": uncertainty,
+            "experimentation_process": [experimentation] if experimentation else [],
             "hypotheses_tested": ["See experimentation process details"],
             "alternatives_considered": [],
-            "results_or_outcome": "See technical summary",
-            "failures_or_iterations": "Multiple iterations performed"
+            "results_or_outcome": resolution,
+            "failures_or_iterations": failures,
         },
         "four_part_test": {
             "permitted_purpose": row.get("extra_A", ""),
             "technological_in_nature": row.get("extra_B", ""),
-            "elimination_of_uncertainty": row.get("param_6", ""),
-            "process_of_experimentation": row.get("param_7", "")
+            "elimination_of_uncertainty": elim_of_uncertainty,
+            "process_of_experimentation": experimentation,
         },
         "evidence_links": {
             "jira_links": [], "github_links": [], "design_docs": []
@@ -207,6 +307,10 @@ def _parse_employee_row(row):
         if p > 1.0: p = p / 100.0
         safe_allocs.append({"project_id": a["project_id"], "percent_of_employee_time": p})
 
+    activity_raw = row.get("param_8") or "direct_research"
+    valid_activities = {"direct_research", "supervision", "support"}
+    activity = activity_raw.lower().strip() if activity_raw.lower().strip() in valid_activities else "direct_research"
+
     return {
         "employee_id": row.get("id"),
         "employee_name": row.get("name_or_description"),
@@ -216,6 +320,10 @@ def _parse_employee_row(row):
         "w2_box_1_wages": _safe_float(row.get("param_4")),
         "qualified_percentage": _safe_pct_float(row.get("param_5")),
         "qualification_basis": row.get("param_6") or "Interview",
+        "activity_type": activity,
+        "rd_activities_description": (row.get("notes") or "").strip() or None,
+        "is_owner_officer": str(row.get("extra_A", "")).upper() == "TRUE",
+        "source_doc": row.get("extra_B") or None,
         "project_allocation": safe_allocs
     }
 
@@ -227,6 +335,9 @@ def _parse_contractor_row(row):
         p = a["percent_of_vendor_work"]
         if p > 1.0: p = p / 100.0
         safe_allocs.append({"project_id": a["project_id"], "percent_of_vendor_work": p})
+
+    source_doc_raw = row.get("extra_A") or ""
+    source_docs = [d.strip() for d in source_doc_raw.split(";") if d.strip()]
 
     return {
         "vendor_id": row.get("id"),
@@ -240,6 +351,7 @@ def _parse_contractor_row(row):
              "company_bears_financial_risk": str(row.get("param_6")).upper() == "TRUE",
              "supporting_contract_reference": row.get("param_7", "Contract on file")
         },
+        "source_docs": source_docs,
         "project_allocation": safe_allocs
     }
 
@@ -249,6 +361,8 @@ def _parse_expense_row(row):
     
     if "supply" in etype:
         allocs = _parse_alloc(alloc_str, "percent_of_supply_usage")
+        supply_doc_raw = row.get("extra_A") or ""
+        supply_docs = [d.strip() for d in supply_doc_raw.split(";") if d.strip()]
         data = {
             "supply_id": row.get("id"),
             "description": row.get("name_or_description"),
@@ -256,6 +370,8 @@ def _parse_expense_row(row):
             "invoice_reference": row.get("param_3", ""),
             "amount": _safe_float(row.get("param_4")),
             "qualified_percentage": _safe_pct_float(row.get("param_5")),
+            "consumed_in_research": str(row.get("extra_B", "TRUE")).upper() != "FALSE",
+            "source_docs": supply_docs,
             "project_allocation": allocs,
             "notes": row.get("notes", "")
         }
@@ -315,6 +431,18 @@ def handoff_to_computation(context: dict = None) -> Handoff:
 
 csv_ingestion_agent = Agent(
     name="CSVIngestionAgent",
-    instructions="Parses single comprehensive CSV (row_type=METADATA/PROJECT/etc) into RDStudyData.",
+    instructions="""You are the CSV Ingestion Agent.
+
+Your ONLY job is:
+1. Call parse_single_csv() — always, immediately, with no preamble.
+2. If the result has status='success': call handoff_to_computation() immediately.
+3. If the result has status='error': return a structured JSON error with the error message.
+
+RULES:
+- Do NOT summarise the parsed data.
+- Do NOT ask for confirmation.
+- Do NOT output prose after a successful parse.
+- After a successful parse you MUST call handoff_to_computation() — no exceptions.
+""",
     functions=[parse_single_csv, handoff_to_computation]
 )

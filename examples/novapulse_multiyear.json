@@ -1,0 +1,1602 @@
+{
+  "study_title": "NovaPulse Energy Technologies Inc. \u2014 3-Year R&D Tax Credit Study (2022\u20132024)",
+  "combined_credit_method": "ASC",
+  "tax_years": [
+    {
+      "study_metadata": {
+        "prepared_for": {
+          "legal_name": "NovaPulse Energy Technologies Inc.",
+          "ein": "47-3891204",
+          "entity_type": "C-Corp",
+          "address": "500 Innovation Parkway, Denver, CO 80201",
+          "industry": "Clean Energy / Advanced Battery Systems",
+          "website": "https://novapulseenergy.com",
+          "dba": null,
+          "state_of_incorporation": "CO",
+          "states_of_operation": [
+            "CO"
+          ]
+        },
+        "prepared_by": {
+          "firm_name": "Vertex Tax Advisors",
+          "preparer_name": "Sandra K. Marsh, CPA",
+          "date_prepared": "2023-04-10"
+        },
+        "tax_year": {
+          "year_label": "2022",
+          "start_date": "2022-01-01",
+          "end_date": "2022-12-31",
+          "return_type": "Original"
+        },
+        "credit_method": "ASC",
+        "notes": null
+      },
+      "company_background": {
+        "business_overview": "NovaPulse Energy Technologies Inc. designs and manufactures advanced battery management systems (BMS) and thermal management solutions for utility-scale energy storage, commercial electric vehicles, and grid-tied storage applications. The company proprietary software stack enables real-time cell-level monitoring, predictive degradation modeling, and adaptive balancing algorithms that extend battery pack lifetime by 20-35% compared to standard BMS platforms. NovaPulse hardware-software integrated approach is differentiated by on-device machine learning capabilities that operate without cloud connectivity, enabling deployment in grid-edge and remote installations.",
+        "products_and_services": [
+          "Adaptive Battery Management System (ABMS) platform for utility-scale Li-ion storage",
+          "Phase-change thermal management modules for high-density battery arrays",
+          "AI-driven State-of-Health estimation software for fleet battery management",
+          "Grid-aware charge optimization firmware for utility storage assets"
+        ],
+        "rd_departments": [
+          "Battery Systems Engineering",
+          "Embedded Firmware and Real-Time Systems",
+          "Electrochemistry Research",
+          "Data Science and Machine Learning",
+          "Engineering Leadership"
+        ],
+        "locations": [
+          "500 Innovation Parkway, Denver, CO 80201"
+        ],
+        "org_structure_summary": "NovaPulse operates from its Denver headquarters, housing all R&D functions. The Battery Systems Engineering and Electrochemistry Research teams own core algorithmic and materials research. The Embedded Firmware team implements real-time BMS software on custom hardware. The Data Science team develops ML models for degradation prediction. All R&D programs are overseen by the VP of Engineering."
+      },
+      "gross_receipts": {
+        "year_0": 8200000,
+        "year_minus_1": 6400000,
+        "year_minus_2": 4800000,
+        "year_minus_3": 3200000
+      },
+      "rd_projects": [
+        {
+          "project_id": "P001",
+          "project_name": "Adaptive BMS with Predictive Cell Degradation Modeling",
+          "business_component": "Novel battery management system integrating electrochemical impedance spectroscopy and ML-based degradation prediction into real-time embedded firmware on ARM Cortex-M7",
+          "start_date": "2022-01-15",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop an embedded BMS platform capable of predicting individual cell degradation trajectories 30-90 days ahead using on-device ML inference on an ARM Cortex-M7 microcontroller at sub-10ms latency without cloud offloading.",
+            "problem_statement": "Standard BMS platforms measure terminal voltage and temperature but cannot predict cell-level degradation trajectories, resulting in unexpected capacity fade. No commercially available embedded BMS operates real-time ML inference at the cell level on resource-constrained hardware with only 1MB RAM.",
+            "technical_uncertainty": "Whether electrochemical impedance spectroscopy (EIS) features extracted in real time could provide sufficient signal fidelity on embedded ARM Cortex-M7 hardware with 1MB RAM to train and run a reliable degradation prediction model without cloud offloading, given the noise characteristics of industrial operating environments and INT8 quantization accuracy trade-offs.",
+            "hypotheses_tested": [
+              "EIS at 1kHz sampling rate would provide sufficient degradation signal on embedded hardware",
+              "LSTM-based sequence model could run inference within 8ms on Cortex-M7 with INT8 quantization",
+              "Transfer learning from laboratory cell aging datasets would generalize to field deployment conditions"
+            ],
+            "experimentation_process": [
+              "Designed custom EIS measurement circuit integrated into BMS PCB prototype; characterized noise floor across 8 temperature ranges",
+              "Trained LSTM and Transformer architectures on 18650 cell aging dataset from CALCE and proprietary lab cycling data",
+              "Applied INT8 post-training quantization; benchmarked inference latency on Cortex-M7 development board",
+              "Deployed prototype to controlled 48-cell test rack; collected 6 months of field-equivalent cycling data",
+              "Compared predicted vs. actual capacity fade on 12 cells with known degradation profiles"
+            ],
+            "alternatives_considered": [
+              "Cloud-offloaded inference rejected due to latency and connectivity requirements for grid-edge deployments",
+              "Coulomb counting with Kalman filter insufficient for long-horizon degradation prediction",
+              "Voltage signature pattern matching insufficient accuracy across temperature ranges"
+            ],
+            "results_or_outcome": "By Q4 2022, the LSTM model with INT8 quantization achieved 7.8ms average inference latency on Cortex-M7 and predicted capacity fade within plus or minus 2.1% over a 60-day horizon on the 12-cell validation set. EIS feature extraction at 1kHz proved viable with a hardware filter design that reduced noise floor by 14dB.",
+            "failures_or_iterations": "Initial EIS circuit design suffered from impedance mismatch causing plus or minus 8% measurement error requiring two PCB revisions. First LSTM architecture (128-unit, 3-layer) could not be quantized to INT8 without greater than 4% accuracy degradation and was replaced with a shallower 64-unit 2-layer architecture. Transfer learning from CALCE dataset produced 11% prediction error in high-temperature cycling and required domain adaptation fine-tuning."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a new and improved BMS platform constituting a new business component under IRC Sec. 41(d)(1), aimed at discovering information to eliminate uncertainty about whether on-device ML degradation prediction can achieve production-grade accuracy on resource-constrained embedded hardware.",
+            "technological_in_nature": "Grounded in electrochemistry, signal processing, embedded systems engineering, and machine learning, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The central uncertainty was whether EIS-derived features could reliably support real-time ML-based degradation prediction on ARM Cortex-M7 hardware operating in industrial noise environments. This was not determinable from existing literature. The team resolved this through systematic hardware prototyping, quantization experiments, and controlled cell aging validation trials.",
+            "process_of_experimentation": "Iterative experimentation included hardware EIS circuit design and noise floor characterization, ML architecture search and INT8 quantization feasibility study, training and evaluation on cycling datasets, prototype deployment on 48-cell test rack, and comparative accuracy analysis against ground-truth degradation profiles."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "BMS_PCB_Design_Rev1_2022.pdf",
+              "BMS_PCB_Design_Rev2_2022.pdf"
+            ],
+            "test_reports": [
+              "EIS_Circuit_NoiseFloor_2022_Q1.pdf",
+              "LSTM_Quantization_Benchmark_2022_Q2.pdf",
+              "48Cell_RackTrial_6Month_Report_2022_Q4.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [
+              "https://github.internal/novapulse/bms-firmware/tree/2022-eis-branch"
+            ],
+            "deployment_logs": [],
+            "other_supporting_docs": [
+              "CALCE_Dataset_License_2022.pdf"
+            ]
+          },
+          "source_answers": {
+            "QP1": "Adaptive BMS with Predictive Cell Degradation Modeling",
+            "QP2": "Whether EIS features on ARM Cortex-M7 can support real-time ML degradation prediction without cloud offloading",
+            "QP3": "LSTM with INT8 quantization achieved 7.8ms latency and 2.1% capacity fade prediction accuracy on 12-cell validation set"
+          }
+        },
+        {
+          "project_id": "P002",
+          "project_name": "Phase-Change Thermal Management System for High-Density Li-ion Arrays",
+          "business_component": "Novel hybrid thermal management module using microencapsulated phase-change materials integrated with active liquid cooling for high-density battery rack hotspot suppression",
+          "start_date": "2022-03-01",
+          "end_date": "2022-12-31",
+          "status": "Completed",
+          "technical_summary": {
+            "objective": "Design and validate a hybrid passive-active thermal management system using microencapsulated phase-change materials that maintains cell surface temperature within 2 degrees Celsius of target setpoint across a 0-45 degree Celsius ambient range during 2C continuous discharge cycles.",
+            "problem_statement": "High-density Li-ion battery racks operating at 2C continuous discharge generate localized hotspots exceeding 55 degrees Celsius that accelerate degradation. Active liquid cooling alone cannot prevent inter-cell hotspot formation. A hybrid approach was theoretically superior but no validated design existed for rack-scale deployment.",
+            "technical_uncertainty": "Whether microencapsulated PCM at the required latent heat density of 200-220 J/g could be formulated into a thermally conductive composite panel that maintains structural integrity under 1000 or more thermal cycles while reducing inter-cell hotspot differential from 12 degrees to less than 2 degrees Celsius.",
+            "hypotheses_tested": [
+              "mPCM at 30% vol loading in polymer-graphite composite would provide sufficient latent heat for 2C discharge buffering",
+              "Active liquid cooling at 0.5 L/min would be sufficient when combined with mPCM buffering",
+              "Composite panel would maintain structural integrity through 1000 thermal cycles"
+            ],
+            "experimentation_process": [
+              "Formulated three mPCM composite compositions at 20%, 25%, and 30% vol loading and characterized thermal conductivity via DSC analysis",
+              "Manufactured prototype composite panels and tested structural integrity after 0, 100, 500, and 1000 simulated thermal cycles",
+              "Instrumented 16-cell test array with embedded thermocouples and ran 2C discharge cycling at multiple ambient temperatures",
+              "Measured hotspot differential vs. baseline liquid cooling only across all temperature conditions",
+              "Optimized liquid cooling flow rate from 0.3 to 0.8 L/min to determine minimum effective rate"
+            ],
+            "alternatives_considered": [
+              "Heat pipe arrays had insufficient thermal capacity at rack scale",
+              "Thermoelectric coolers had excessive power draw for utility-scale efficiency requirements",
+              "Paraffin wax bulk PCM panels had insufficient thermal conductivity of 0.2 W/mK"
+            ],
+            "results_or_outcome": "The 30% vol mPCM composite achieved 4.8 W/mK thermal conductivity and 214 J/g latent heat. At 2C discharge with 45 degree ambient the hybrid system maintained peak hotspot differential at 1.7 degrees Celsius, within the 2 degree design target. Structural integrity maintained through 1000 simulated thermal cycles with less than 5% compressive strength reduction.",
+            "failures_or_iterations": "20% and 25% vol mPCM loading formulations failed with hotspot differentials of 4.8 and 3.2 degrees respectively. Initial composite panel with polymer binder degraded structurally after 500 cycles with 17% strength loss and was switched to graphite-stabilized binder. Initial thermocouple placement failed to capture the true inter-cell hotspot and required relocation based on thermal imaging analysis."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a new hybrid thermal management business component under IRC Sec. 41(d)(1), aimed at resolving whether mPCM-composite panels can achieve production-grade thermal regulation while maintaining structural durability for battery rack deployment.",
+            "technological_in_nature": "Grounded in materials science, thermal engineering, and electrochemical safety, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The technical uncertainty was whether mPCM at the required latent heat density could be formulated into a structurally durable composite panel suitable for repeated thermal cycling. Published literature addressed mPCM in building materials not battery rack applications. The team eliminated this uncertainty through systematic formulation trials and multi-cycle mechanical testing.",
+            "process_of_experimentation": "The team conducted three mPCM composite formulation trials with DSC characterization, accelerated thermal cycling to 1000 cycles, instrumented thermal testing of 16-cell prototype arrays at multiple ambient temperatures, active cooling parameter optimization, and final validation against the 2 degree Celsius design target."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "ThermalMgmt_SystemDesign_2022.pdf"
+            ],
+            "test_reports": [
+              "mPCM_DSC_Analysis_2022_Q1.pdf",
+              "StructuralCycling_1000Cycle_2022_Q3.pdf",
+              "16Cell_ThermalValidation_2022_Q4.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [],
+            "deployment_logs": [],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "Phase-Change Thermal Management System for High-Density Li-ion Arrays",
+            "QP2": "Whether mPCM composite panels can achieve sufficient thermal buffering and structural durability for battery rack deployment",
+            "QP3": "30% vol mPCM composite achieved 1.7 degree hotspot differential and survived 1000 thermal cycles with less than 5% strength loss"
+          }
+        }
+      ],
+      "employees": [
+        {
+          "employee_id": "E001",
+          "employee_name": "Dr. Marcus Chen",
+          "job_title": "Principal Battery Systems Engineer",
+          "department": "Battery Systems Engineering",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 162000,
+          "qualified_percentage": 0.88,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_MarcusChen_2022.pdf",
+          "rd_activities_description": "Dr. Chen led the algorithmic design of the EIS-based degradation prediction pipeline for P001. He formulated the signal processing architecture for real-time EIS feature extraction on the ARM Cortex-M7, conducted the LSTM architecture selection and INT8 quantization feasibility study, and designed the 48-cell test rack validation protocol. On P002 he defined the thermal performance acceptance criteria and reviewed thermal modeling assumptions.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.75
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.25
+            }
+          ]
+        },
+        {
+          "employee_id": "E002",
+          "employee_name": "Priya Nair",
+          "job_title": "Senior Electrochemistry Research Engineer",
+          "department": "Electrochemistry Research",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 148000,
+          "qualified_percentage": 0.92,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_PriyaNair_2022.pdf",
+          "rd_activities_description": "Nair led electrochemistry characterization work for both programs. For P001 she designed and executed the EIS circuit validation protocol, characterized noise floor across 8 temperature ranges, and performed domain adaptation fine-tuning. For P002 she led mPCM formulation work, conducting DSC analysis on all three composite formulations and identifying the 30% vol loading specification.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.5
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.5
+            }
+          ]
+        },
+        {
+          "employee_id": "E003",
+          "employee_name": "Jake Williams",
+          "job_title": "Embedded Firmware Engineer",
+          "department": "Embedded Firmware and Real-Time Systems",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 132000,
+          "qualified_percentage": 0.82,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_JakeWilliams_2022.pdf",
+          "rd_activities_description": "Williams implemented real-time EIS measurement firmware on ARM Cortex-M7, including interrupt-driven sampling, hardware filter configuration, and the LSTM inference engine wrapper with INT8 quantized weights. He profiled and optimized memory allocation to fit the model within the 1MB RAM constraint and resolved the PCB hardware filter design mismatch causing measurement error through two board revisions.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.9
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.1
+            }
+          ]
+        },
+        {
+          "employee_id": "E004",
+          "employee_name": "Sofia Reyes",
+          "job_title": "Data Science and ML Engineer",
+          "department": "Data Science and Machine Learning",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 128000,
+          "qualified_percentage": 0.68,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_SofiaReyes_2022.pdf",
+          "rd_activities_description": "Reyes designed and trained all ML model architectures for P001, including the 128-unit LSTM, the reduced 64-unit architecture that passed INT8 quantization, and the transfer learning fine-tuning pipeline using NovaPulse proprietary cycling data. She built the model evaluation framework and generated the prediction accuracy validation report.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.85
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.15
+            }
+          ]
+        },
+        {
+          "employee_id": "E005",
+          "employee_name": "Robert Holt",
+          "job_title": "VP of Engineering",
+          "department": "Engineering Leadership",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 195000,
+          "qualified_percentage": 0.35,
+          "qualification_basis": "Interview",
+          "activity_type": "supervision",
+          "is_owner_officer": true,
+          "source_doc": "W2_RobertHolt_2022.pdf",
+          "rd_activities_description": "Holt supervised technical direction for both P001 and P002, reviewed EIS architecture decisions and INT8 quantization strategy, approved the PCB hardware filter redesign, and directed the pivot from 20% to 30% vol mPCM loading after failure analysis. He conducted biweekly technical reviews and made the architectural decision to pursue hybrid mPCM plus active-cooling over heat pipe alternatives.",
+          "owner_officer_detail": "Holt qualified time consists exclusively of direct technical supervision of R&D activities including reviewing algorithmic designs, approving architectural pivots, and providing engineering judgment on experimental results. Business development, investor relations, and administrative functions are fully excluded.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.5
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.5
+            }
+          ]
+        }
+      ],
+      "contractors": [
+        {
+          "vendor_id": "V001",
+          "vendor_name": "BatteryTest Labs Inc.",
+          "description_of_work": "Independent accelerated cell aging and electrochemical characterization testing for P001 degradation model validation, including 1000-cycle aging protocols and bench-top EIS reference measurements",
+          "total_amount_paid": 52000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. BTL-2022-04"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_BatteryTestLabs_BTL-2022-04.pdf"
+          ]
+        },
+        {
+          "vendor_id": "V002",
+          "vendor_name": "GridSim Analytics LLC",
+          "description_of_work": "Thermal simulation modeling and CFD analysis for P002 phase-change thermal management system design validation across operating temperature ranges",
+          "total_amount_paid": 38000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Statement of Work No. GSA-2022-07"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P002",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_GridSimAnalytics_GSA-2022-07.pdf"
+          ]
+        }
+      ],
+      "supplies": [
+        {
+          "supply_id": "S001",
+          "description": "Samsung SDI INR18650-35E Li-ion test cells (200 units) for P001 accelerated aging and EIS characterization trials consumed during cycling experiments",
+          "vendor": "Samsung SDI",
+          "invoice_reference": "INV-SSDP-2022-0312",
+          "amount": 14800,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-SSDP-2022-0312.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        },
+        {
+          "supply_id": "S002",
+          "description": "Type-K miniature thermocouple array with 0.1 degree resolution (64 units) for P002 thermal characterization instrumentation of 16-cell test array",
+          "vendor": "Omega Engineering",
+          "invoice_reference": "INV-OMEGA-2022-0558",
+          "amount": 9600,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-OMEGA-2022-0558.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P002",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "cloud_computing": [
+        {
+          "cloud_id": "C001",
+          "provider": "Amazon Web Services",
+          "service_category": "ML Model Training",
+          "billing_reference": "AWS-Invoice-2022-NovaPulse-Q2Q3",
+          "amount": 16800,
+          "qualified_percentage": 1.0,
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_cloud_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "qre_calculation_rules": {
+        "include_wages": true,
+        "include_supplies": true,
+        "include_cloud": true,
+        "include_contractors": true,
+        "contractor_eligibility_rate": 0.65,
+        "default_employee_qualification_basis": "Interview",
+        "allow_sampling_methodology": false,
+        "include_bonus_in_wages": true,
+        "exclude_foreign_research": true
+      },
+      "asc_calculation_inputs": {
+        "qre_prior_years_override": {
+          "enabled": true,
+          "year_minus_1_qre": 480000,
+          "year_minus_2_qre": 350000,
+          "year_minus_3_qre": 240000
+        }
+      },
+      "business_flags": {
+        "is_startup": false,
+        "payroll_tax_offset_eligible": false,
+        "funded_by_third_party": false,
+        "funded_research_exists": false,
+        "wages_used_for_other_credits": false,
+        "prior_credit_claimed": true,
+        "prior_6765_years": [
+          "2020",
+          "2021"
+        ],
+        "prior_qre_amounts": {
+          "2020": 350000,
+          "2021": 480000
+        },
+        "section_174_filed": true
+      },
+      "output_preferences": {
+        "currency": "USD",
+        "format": "StudyDocument",
+        "include_appendices": true,
+        "include_employee_detail_table": true,
+        "include_vendor_detail_table": true,
+        "include_project_narratives": true,
+        "include_four_part_test_table": true,
+        "include_form_6765_tie_out": true
+      },
+      "disclosures_and_assumptions": {
+        "methodology_summary": "Qualified researcher interviews and contemporaneous engineering documentation including PCB design files, DSC analysis reports, test rack data logs, and version-controlled firmware repositories were used to substantiate qualified research expenditures for tax year 2022.",
+        "limitations": [
+          "Qualification percentages based on structured interviews corroborated by project time tracking records",
+          "Prior year QRE figures used for ASC base calculation are based on previously filed Form 6765 returns for 2020 and 2021"
+        ],
+        "disclaimer_text": "This report is prepared solely for federal income tax compliance purposes under IRC Sec. 41. It does not constitute legal advice. All figures should be reviewed by qualified tax counsel before filing."
+      },
+      "golden_answer": "NovaPulse work qualifies as R&D under IRC Section 41 because every engineering program we pursue requires our team to confront genuine technical uncertainty through systematic experimentation. When we set out to build the predictive degradation BMS in 2022, we did not know whether we could extract meaningful EIS signals on embedded hardware within industrial noise constraints, or whether an INT8-quantized LSTM could run inference fast enough to be useful in a real-time BMS. We designed the experiments, built the circuits, encountered failures, revised our hardware, and ran thousands of test cycles before we had answers. That is science and it is the core of how NovaPulse engineers.",
+      "interview_metadata": {
+        "status": "complete",
+        "interviewer": "Sandra K. Marsh, CPA",
+        "interview_date": "2023-03-15",
+        "notes": null
+      },
+      "interview_responses": {
+        "QF1": "BMS_PCB_Design_Rev1_2022.pdf, BMS_PCB_Design_Rev2_2022.pdf, EIS_Circuit_NoiseFloor_2022_Q1.pdf",
+        "QF2": "NovaPulse work qualifies as R&D under IRC Section 41 because every engineering program requires systematic experimentation to resolve genuine technical uncertainty."
+      },
+      "additional_documentation": [
+        "BMS_PCB_Design_Rev1_2022.pdf",
+        "BMS_PCB_Design_Rev2_2022.pdf",
+        "EIS_Circuit_NoiseFloor_2022_Q1.pdf",
+        "LSTM_Quantization_Benchmark_2022_Q2.pdf",
+        "48Cell_RackTrial_6Month_Report_2022_Q4.pdf",
+        "mPCM_DSC_Analysis_2022_Q1.pdf",
+        "StructuralCycling_1000Cycle_2022_Q3.pdf",
+        "16Cell_ThermalValidation_2022_Q4.pdf"
+      ]
+    },
+    {
+      "study_metadata": {
+        "prepared_for": {
+          "legal_name": "NovaPulse Energy Technologies Inc.",
+          "ein": "47-3891204",
+          "entity_type": "C-Corp",
+          "address": "500 Innovation Parkway, Denver, CO 80201",
+          "industry": "Clean Energy / Advanced Battery Systems",
+          "website": "https://novapulseenergy.com",
+          "dba": null,
+          "state_of_incorporation": "CO",
+          "states_of_operation": [
+            "CO"
+          ]
+        },
+        "prepared_by": {
+          "firm_name": "Vertex Tax Advisors",
+          "preparer_name": "Sandra K. Marsh, CPA",
+          "date_prepared": "2024-04-08"
+        },
+        "tax_year": {
+          "year_label": "2023",
+          "start_date": "2023-01-01",
+          "end_date": "2023-12-31",
+          "return_type": "Original"
+        },
+        "credit_method": "ASC",
+        "notes": null
+      },
+      "company_background": {
+        "business_overview": "NovaPulse Energy Technologies Inc. designs and manufactures advanced battery management systems and thermal management solutions for utility-scale energy storage and commercial electric vehicles. In 2023 the company expanded its R&D programs to include an AI-driven State-of-Health (SoH) estimation engine capable of operating across heterogeneous battery chemistries, further differentiating its platform in utility storage and fleet management markets.",
+        "products_and_services": [
+          "Adaptive Battery Management System (ABMS) platform for utility-scale Li-ion storage",
+          "Phase-change thermal management modules for high-density battery arrays",
+          "AI-driven State-of-Health estimation software for fleet battery management",
+          "Grid-aware charge optimization firmware for utility storage assets"
+        ],
+        "rd_departments": [
+          "Battery Systems Engineering",
+          "Embedded Firmware and Real-Time Systems",
+          "Electrochemistry Research",
+          "Data Science and Machine Learning",
+          "Engineering Leadership"
+        ],
+        "locations": [
+          "500 Innovation Parkway, Denver, CO 80201"
+        ],
+        "org_structure_summary": "NovaPulse operates from its Denver headquarters. In 2023 the engineering team advanced multi-cell dynamic balancing research while the Data Science team initiated the SoH Estimation Engine program. All R&D programs remain under the supervision of the VP of Engineering."
+      },
+      "gross_receipts": {
+        "year_0": 10500000,
+        "year_minus_1": 8200000,
+        "year_minus_2": 6400000,
+        "year_minus_3": 4800000
+      },
+      "rd_projects": [
+        {
+          "project_id": "P001",
+          "project_name": "Multi-Cell Dynamic Balancing Algorithm for Heterogeneous Battery Packs",
+          "business_component": "Novel MPC-based cell balancing algorithm that dynamically redistributes charge across cells with divergent State-of-Charge and State-of-Health profiles within a single battery pack",
+          "start_date": "2023-01-10",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop a model predictive control (MPC)-based cell balancing algorithm that reduces pack-level capacity loss from cell divergence by at least 18% compared to passive balancing, while operating within the existing BMS firmware footprint on ARM Cortex-M7 within a 10ms control loop.",
+            "problem_statement": "As battery packs age, individual cells diverge in State-of-Charge and State-of-Health, reducing usable pack capacity by 15-25% even when individual cells retain significant capacity. Passive balancing bleeds excess charge but cannot recover capacity from SoH divergence. Active balancing algorithms do not account for real-time SoH variance, leaving significant recoverable capacity unused.",
+            "technical_uncertainty": "Whether an MPC-based balancing algorithm using real-time per-cell SoH estimates could compute optimal charge redistribution trajectories within the 10ms control loop budget on ARM Cortex-M7, given the combinatorial complexity of multi-cell balancing for packs with 96 or more cells.",
+            "hypotheses_tested": [
+              "Linearized MPC with a 5-step prediction horizon would fit within the 10ms control cycle on Cortex-M7 at INT8 precision",
+              "Per-cell SoH inputs from the degradation model would improve balancing efficiency by at least 15% over SoC-only balancing",
+              "Warm-start initialization would reduce MPC solve time by 40% vs cold-start across consecutive control cycles"
+            ],
+            "experimentation_process": [
+              "Implemented linearized MPC solver in C++ with INT8 fixed-point arithmetic and profiled solve time on Cortex-M7 across 16, 48, and 96-cell pack sizes",
+              "Compared balancing efficiency using passive balancing, active SoC-only MPC, and active SoC plus SoH MPC on 48-cell test rack",
+              "Implemented warm-start initialization using prior-cycle solution as seed and measured solve time reduction across 10000 consecutive control cycles",
+              "Ran 6-month pack cycling trial on 96-cell rack measuring cumulative capacity loss vs. passive balancing baseline",
+              "Stress-tested MPC solver under worst-case divergence conditions simulating 20% SoH spread across 96 cells"
+            ],
+            "alternatives_considered": [
+              "Full nonlinear MPC was computationally intractable within 10ms on Cortex-M7 for 96-cell packs",
+              "Rule-based threshold balancing with SoH weighting was insufficient to optimize across multi-cell interactions",
+              "Off-chip MPC computation rejected to maintain single-chip BMS architecture"
+            ],
+            "results_or_outcome": "By Q4 2023 the linearized MPC solver achieved 8.2ms average solve time on 96-cell packs using warm-start, within the 10ms budget. The SoC plus SoH MPC reduced pack-level capacity loss from divergence by 21.4% compared to passive balancing baseline, exceeding the 18% target. Warm-start reduced solve time by 44% vs cold-start.",
+            "failures_or_iterations": "Initial MPC with 10-step prediction horizon exceeded 10ms even on 16-cell packs and required reduction to 5 steps. First INT8 fixed-point implementation accumulated rounding error causing solver divergence on 96-cell problems and required redesign of numerical scaling. SoC-only MPC achieved only 11% capacity loss improvement, confirming the necessity of per-cell SoH inputs."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a new multi-cell dynamic balancing algorithm constituting an improved business component under IRC Sec. 41(d)(1), aimed at discovering whether MPC with per-cell SoH inputs can achieve real-time optimal balancing on resource-constrained embedded hardware.",
+            "technological_in_nature": "Grounded in control theory, numerical optimization, electrochemistry, and embedded systems, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The central uncertainty was whether a linearized MPC solver using real-time SoH inputs could fit within the 10ms embedded control cycle for 96-cell packs. No prior work demonstrated MPC-based SoH-aware balancing at this scale on Cortex-M7 class hardware. The team resolved this through iterative solver design, INT8 numerical optimization, and warm-start strategy development.",
+            "process_of_experimentation": "Iterative experimentation including MPC solver implementation and latency profiling, comparative balancing efficiency trials, warm-start strategy benchmarking, 6-month 96-cell pack cycling trial, and worst-case divergence stress testing."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "MPC_Balancing_AlgorithmSpec_2023.pdf"
+            ],
+            "test_reports": [
+              "MPC_SolveTime_Benchmark_2023_Q1.pdf",
+              "48Cell_BalancingEfficiency_2023_Q2.pdf",
+              "96Cell_PackTrial_6Month_2023_Q4.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [
+              "https://github.internal/novapulse/bms-firmware/tree/2023-mpc-balancing"
+            ],
+            "deployment_logs": [],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "Multi-Cell Dynamic Balancing Algorithm for Heterogeneous Battery Packs",
+            "QP2": "Whether MPC with per-cell SoH inputs can compute optimal balancing trajectories within 10ms on ARM Cortex-M7 for 96-cell packs",
+            "QP3": "Linearized MPC with warm-start achieved 8.2ms solve time and 21.4% capacity loss reduction vs passive balancing"
+          }
+        },
+        {
+          "project_id": "P003",
+          "project_name": "AI-Driven State-of-Health Estimation Engine",
+          "business_component": "Novel machine learning system for real-time State-of-Health estimation across multiple lithium-ion chemistries without chemistry-specific calibration",
+          "start_date": "2023-04-01",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop a chemistry-agnostic SoH estimation model achieving less than 3% mean absolute error across LFP, NMC, and NCA cell chemistries using only voltage, current, and temperature signals available in the BMS without requiring chemistry-specific recalibration.",
+            "problem_statement": "Existing SoH estimation methods require chemistry-specific calibration or rely on EIS measurements not available in all BMS configurations. A universal SoH model operating on standard BMS signals would enable NovaPulse to serve diverse customer fleets with a single firmware release, but no such model had been demonstrated at production accuracy across multiple Li-ion chemistries.",
+            "technical_uncertainty": "Whether a single transformer-based sequence model trained on multi-chemistry cycling data could generalize SoH estimation across LFP, NMC, and NCA chemistries to within 3% MAE using only V/I/T signals, given the substantially different electrochemical signatures and degradation mechanisms of each chemistry.",
+            "hypotheses_tested": [
+              "A transformer model with chemistry-type embedding would outperform chemistry-specific LSTM models on cross-chemistry SoH estimation",
+              "Data augmentation via synthetic degradation trajectory generation would reduce overfitting to laboratory aging conditions",
+              "Incremental capacity analysis (ICA) derived features from V/I signals would serve as effective chemistry-invariant degradation proxies"
+            ],
+            "experimentation_process": [
+              "Assembled multi-chemistry training dataset from CALCE, NASA PCOE, and proprietary NovaPulse cycling data covering LFP, NMC-811, NMC-622, and NCA cells",
+              "Implemented ICA feature extraction pipeline producing dQ/dV curves from raw V/I measurements",
+              "Trained and evaluated chemistry-specific LSTMs as baseline, a single shared LSTM, a transformer with chemistry embedding, and a transformer with ICA features plus chemistry embedding",
+              "Evaluated synthetic degradation augmentation pipeline using physics-informed capacity fade models",
+              "Benchmarked final model on held-out NovaPulse field cycling data not seen during training"
+            ],
+            "alternatives_considered": [
+              "Electrochemical model-based SoH requires chemistry-specific parameterization and is too computationally expensive for embedded inference",
+              "Coulomb counting with correction factors has accuracy degradation with sensor noise accumulation",
+              "Gradient boosted trees had insufficient temporal modeling of degradation trajectories"
+            ],
+            "results_or_outcome": "By Q4 2023 the transformer model with ICA features and chemistry embedding achieved 2.4% MAE on LFP, 2.8% MAE on NMC, and 3.1% MAE on NCA in cross-validation. Field data benchmarking achieved 2.7% MAE averaged across chemistries, within the 3% target for LFP and NMC with NCA remaining a focus for 2024.",
+            "failures_or_iterations": "Shared LSTM without chemistry embedding achieved 5.8% MAE on NCA confirming a single chemistry-agnostic LSTM cannot generalize without chemistry context. Synthetic augmentation initially generated physically implausible capacity fade curves that degraded accuracy and required physics-informed constraints. Transformer without ICA features achieved only 3.9% MAE on NCA confirming the necessity of ICA-derived features."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a new chemistry-agnostic SoH estimation engine constituting a new business component under IRC Sec. 41(d)(1), aimed at discovering whether a single ML model can generalize SoH estimation across Li-ion chemistries at production accuracy using standard BMS signals.",
+            "technological_in_nature": "Grounded in machine learning, electrochemistry, and signal processing, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The technical uncertainty was whether a transformer model with chemistry embedding and ICA features could generalize SoH estimation across LFP, NMC, and NCA to within 3% MAE. No prior published work demonstrated this across all three chemistry families using only standard V/I/T signals. The team resolved this through systematic architecture search, multi-chemistry dataset assembly, and ablation studies.",
+            "process_of_experimentation": "The team conducted multi-chemistry training dataset assembly and ICA feature pipeline implementation, four-architecture comparative evaluation, synthetic augmentation pipeline development with physics-informed constraints, cross-validation accuracy benchmarking, and field data validation on NovaPulse fleet cycling data."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "SoH_ModelArchitecture_Spec_2023.pdf"
+            ],
+            "test_reports": [
+              "MultiChemistry_Benchmark_2023_Q3.pdf",
+              "FieldData_SoH_Validation_2023_Q4.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [
+              "https://github.internal/novapulse/soh-engine/tree/2023-transformer-v1"
+            ],
+            "deployment_logs": [],
+            "other_supporting_docs": [
+              "CALCE_License_2023.pdf",
+              "NASA_PCOE_DataAccess_2023.pdf"
+            ]
+          },
+          "source_answers": {
+            "QP1": "AI-Driven State-of-Health Estimation Engine",
+            "QP2": "Whether a single transformer model with ICA features can achieve less than 3% MAE SoH estimation across LFP, NMC, and NCA chemistries",
+            "QP3": "Transformer with ICA features achieved 2.4-2.8% MAE on LFP and NMC; NCA at 3.1%, within target for LFP/NMC with ongoing NCA refinement"
+          }
+        }
+      ],
+      "employees": [
+        {
+          "employee_id": "E001",
+          "employee_name": "Dr. Marcus Chen",
+          "job_title": "Principal Battery Systems Engineer",
+          "department": "Battery Systems Engineering",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 172000,
+          "qualified_percentage": 0.88,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_MarcusChen_2023.pdf",
+          "rd_activities_description": "Dr. Chen led the MPC algorithm design for P001, formulating the linearized MPC problem structure and warm-start initialization strategy that achieved the 10ms solve-time target on 96-cell packs. He contributed to P003 by defining the ICA feature extraction mathematical framework and reviewing the transformer architecture selection criteria.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.7
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.3
+            }
+          ]
+        },
+        {
+          "employee_id": "E002",
+          "employee_name": "Priya Nair",
+          "job_title": "Senior Electrochemistry Research Engineer",
+          "department": "Electrochemistry Research",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 158000,
+          "qualified_percentage": 0.9,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_PriyaNair_2023.pdf",
+          "rd_activities_description": "Nair led electrochemistry characterization for both programs. For P001 she characterized per-cell SoH estimation accuracy on the 48-cell balancing rack and validated SoH input quality for the MPC solver. For P003 she assembled the multi-chemistry training dataset, characterized ICA feature quality across LFP/NMC/NCA, and designed the physics-informed constraints for the synthetic degradation augmentation pipeline.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.35
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.65
+            }
+          ]
+        },
+        {
+          "employee_id": "E003",
+          "employee_name": "Jake Williams",
+          "job_title": "Embedded Firmware Engineer",
+          "department": "Embedded Firmware and Real-Time Systems",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 142000,
+          "qualified_percentage": 0.82,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_JakeWilliams_2023.pdf",
+          "rd_activities_description": "Williams implemented the INT8 fixed-point MPC solver in C++ on ARM Cortex-M7, resolved the numerical scaling issue causing solver divergence on 96-cell problems, and implemented the warm-start initialization data structure. He built the ICA feature extraction firmware module for P003, enabling real-time dQ/dV computation from raw BMS V/I samples.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.75
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.25
+            }
+          ]
+        },
+        {
+          "employee_id": "E004",
+          "employee_name": "Sofia Reyes",
+          "job_title": "Data Science and ML Engineer",
+          "department": "Data Science and Machine Learning",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 138000,
+          "qualified_percentage": 0.7,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_SofiaReyes_2023.pdf",
+          "rd_activities_description": "Reyes designed and trained all ML architectures for P003 including baseline chemistry-specific LSTMs, the shared LSTM, and the final transformer with chemistry embedding and ICA features. She implemented the synthetic degradation augmentation pipeline with physics-informed constraints and generated the cross-validation and field data accuracy benchmarking reports.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.2
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.8
+            }
+          ]
+        },
+        {
+          "employee_id": "E005",
+          "employee_name": "Robert Holt",
+          "job_title": "VP of Engineering",
+          "department": "Engineering Leadership",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 208000,
+          "qualified_percentage": 0.38,
+          "qualification_basis": "Interview",
+          "activity_type": "supervision",
+          "is_owner_officer": true,
+          "source_doc": "W2_RobertHolt_2023.pdf",
+          "rd_activities_description": "Holt supervised both P001 and P003 programs, approved the prediction horizon reduction from 10 to 5 steps in the MPC design after reviewing latency profiling failure, directed the pivot to transformer architecture with ICA features for P003 after reviewing the shared LSTM failure analysis, and conducted biweekly technical reviews.",
+          "owner_officer_detail": "Holt qualified time is limited to direct technical supervision of active R&D programs. Business development, investor relations, and administrative functions are excluded.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.5
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.5
+            }
+          ]
+        }
+      ],
+      "contractors": [
+        {
+          "vendor_id": "V001",
+          "vendor_name": "BatteryTest Labs Inc.",
+          "description_of_work": "Independent multi-chemistry cell aging and cycling services for P003 SoH model training dataset generation covering LFP, NMC-811, NMC-622, and NCA cell formats under controlled temperature and C-rate protocols",
+          "total_amount_paid": 64000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. BTL-2023-02"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_BatteryTestLabs_BTL-2023-02.pdf"
+          ]
+        },
+        {
+          "vendor_id": "V003",
+          "vendor_name": "ThermalDyn Consulting LLC",
+          "description_of_work": "Thermal modeling and simulation supporting P001 96-cell pack thermal validation including CFD analysis under MPC-controlled charge redistribution scenarios",
+          "total_amount_paid": 29500,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Statement of Work No. TDC-2023-05"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_ThermalDynConsulting_TDC-2023-05.pdf"
+          ]
+        }
+      ],
+      "supplies": [
+        {
+          "supply_id": "S001",
+          "description": "Samsung SDI INR18650-35E and LG M50T Li-ion test cells (300 units mixed chemistry) for P003 multi-chemistry aging and SoH model training dataset generation",
+          "vendor": "Samsung SDI and LG Energy Solution",
+          "invoice_reference": "INV-SSDP-2023-0219",
+          "amount": 22400,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-SSDP-2023-0219.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        },
+        {
+          "supply_id": "S003",
+          "description": "High-purity microencapsulated PCM materials RT28HC grade (5kg) for continued thermal management formulation refinement",
+          "vendor": "Microtek Laboratories",
+          "invoice_reference": "INV-MTEK-2023-0447",
+          "amount": 8900,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-MTEK-2023-0447.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "cloud_computing": [
+        {
+          "cloud_id": "C001",
+          "provider": "Amazon Web Services",
+          "service_category": "ML Model Training",
+          "billing_reference": "AWS-Invoice-2023-NovaPulse-Q2Q3Q4",
+          "amount": 24600,
+          "qualified_percentage": 1.0,
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_cloud_usage": 1.0
+            }
+          ]
+        },
+        {
+          "cloud_id": "C002",
+          "provider": "Microsoft Azure",
+          "service_category": "HPC Simulation Compute",
+          "billing_reference": "Azure-Invoice-2023-NovaPulse-HPC",
+          "amount": 18200,
+          "qualified_percentage": 1.0,
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_cloud_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "qre_calculation_rules": {
+        "include_wages": true,
+        "include_supplies": true,
+        "include_cloud": true,
+        "include_contractors": true,
+        "contractor_eligibility_rate": 0.65,
+        "default_employee_qualification_basis": "Interview",
+        "allow_sampling_methodology": false,
+        "include_bonus_in_wages": true,
+        "exclude_foreign_research": true
+      },
+      "asc_calculation_inputs": {
+        "qre_prior_years_override": {
+          "enabled": true,
+          "year_minus_1_qre": 601000,
+          "year_minus_2_qre": 480000,
+          "year_minus_3_qre": 350000
+        }
+      },
+      "business_flags": {
+        "is_startup": false,
+        "payroll_tax_offset_eligible": false,
+        "funded_by_third_party": false,
+        "funded_research_exists": false,
+        "wages_used_for_other_credits": false,
+        "prior_credit_claimed": true,
+        "prior_6765_years": [
+          "2020",
+          "2021",
+          "2022"
+        ],
+        "prior_qre_amounts": {
+          "2020": 350000,
+          "2021": 480000,
+          "2022": 601000
+        },
+        "section_174_filed": true
+      },
+      "output_preferences": {
+        "currency": "USD",
+        "format": "StudyDocument",
+        "include_appendices": true,
+        "include_employee_detail_table": true,
+        "include_vendor_detail_table": true,
+        "include_project_narratives": true,
+        "include_four_part_test_table": true,
+        "include_form_6765_tie_out": true
+      },
+      "disclosures_and_assumptions": {
+        "methodology_summary": "Qualified researcher interviews and contemporaneous engineering documentation including algorithm specification documents, MPC solver benchmarks, multi-chemistry test rack reports, and version-controlled firmware and ML repositories were used to substantiate qualified research expenditures for tax year 2023.",
+        "limitations": [
+          "Qualification percentages based on structured interviews corroborated by project tracking records and manager attestation",
+          "Prior year QRE figures for ASC base calculation are based on the 2022 Form 6765 as filed"
+        ],
+        "disclaimer_text": "This report is prepared solely for federal income tax compliance purposes under IRC Sec. 41. It does not constitute legal advice. All figures should be reviewed by qualified tax counsel before filing."
+      },
+      "golden_answer": "In 2023 NovaPulse engineering programs demonstrate the same defining characteristic that has marked our R&D since inception: we are solving problems that have no known answer. Whether a model predictive controller can optimally balance 96 cells in real time on a microcontroller, or whether a single AI model can estimate battery health across three different chemistries without chemistry-specific recalibration, these are scientific questions that require experiments, failures, redesigns, and validation. Every dollar we claim as R&D in 2023 traces directly to a technical uncertainty we confronted and resolved through systematic engineering experimentation.",
+      "interview_metadata": {
+        "status": "complete",
+        "interviewer": "Sandra K. Marsh, CPA",
+        "interview_date": "2024-03-12",
+        "notes": null
+      },
+      "interview_responses": {
+        "QF1": "MPC_Balancing_AlgorithmSpec_2023.pdf, MPC_SolveTime_Benchmark_2023_Q1.pdf, SoH_ModelArchitecture_Spec_2023.pdf, MultiChemistry_Benchmark_2023_Q3.pdf",
+        "QF2": "In 2023 NovaPulse engineering programs demonstrate the same defining characteristic: we are solving problems that have no known answer."
+      },
+      "additional_documentation": [
+        "MPC_Balancing_AlgorithmSpec_2023.pdf",
+        "MPC_SolveTime_Benchmark_2023_Q1.pdf",
+        "48Cell_BalancingEfficiency_2023_Q2.pdf",
+        "96Cell_PackTrial_6Month_2023_Q4.pdf",
+        "SoH_ModelArchitecture_Spec_2023.pdf",
+        "MultiChemistry_Benchmark_2023_Q3.pdf",
+        "FieldData_SoH_Validation_2023_Q4.pdf"
+      ]
+    },
+    {
+      "study_metadata": {
+        "prepared_for": {
+          "legal_name": "NovaPulse Energy Technologies Inc.",
+          "ein": "47-3891204",
+          "entity_type": "C-Corp",
+          "address": "500 Innovation Parkway, Denver, CO 80201",
+          "industry": "Clean Energy / Advanced Battery Systems",
+          "website": "https://novapulseenergy.com",
+          "dba": null,
+          "state_of_incorporation": "CO",
+          "states_of_operation": [
+            "CO",
+            "TX"
+          ]
+        },
+        "prepared_by": {
+          "firm_name": "Vertex Tax Advisors",
+          "preparer_name": "Sandra K. Marsh, CPA",
+          "date_prepared": "2025-04-10"
+        },
+        "tax_year": {
+          "year_label": "2024",
+          "start_date": "2024-01-01",
+          "end_date": "2024-12-31",
+          "return_type": "Original"
+        },
+        "credit_method": "ASC",
+        "notes": null
+      },
+      "company_background": {
+        "business_overview": "NovaPulse Energy Technologies Inc. designs and manufactures advanced battery management systems and thermal management solutions for utility-scale energy storage and commercial electric vehicles. In 2024 the company expanded R&D to include a grid-aware charge optimization algorithm using reinforcement learning and began shipping production firmware with edge-deployable BMS and federated learning. The company expanded operations to Austin, Texas to support a utility-scale storage pilot deployment.",
+        "products_and_services": [
+          "Adaptive Battery Management System with on-device federated learning for utility-scale Li-ion storage",
+          "Phase-change thermal management modules for high-density battery arrays",
+          "AI-driven State-of-Health estimation engine with fleet telemetry integration",
+          "Grid-aware reinforcement learning charge optimization firmware for utility storage assets"
+        ],
+        "rd_departments": [
+          "Battery Systems Engineering",
+          "Embedded Firmware and Real-Time Systems",
+          "Electrochemistry Research",
+          "Data Science and Machine Learning",
+          "Grid Systems and Optimization",
+          "Engineering Leadership"
+        ],
+        "locations": [
+          "500 Innovation Parkway, Denver, CO 80201",
+          "1800 Energy Blvd, Austin, TX 78745"
+        ],
+        "org_structure_summary": "NovaPulse expanded to a second site in Austin in 2024 to support utility storage pilot deployments. A new Grid Systems and Optimization function was established for grid-aware charge optimization research. Engineering headcount grew with the addition of a new battery algorithm engineer in Denver."
+      },
+      "gross_receipts": {
+        "year_0": 13800000,
+        "year_minus_1": 10500000,
+        "year_minus_2": 8200000,
+        "year_minus_3": 6400000
+      },
+      "rd_projects": [
+        {
+          "project_id": "P001",
+          "project_name": "Edge-Deployable BMS Firmware with On-Device Federated Learning",
+          "business_component": "Novel edge-deployable BMS firmware architecture enabling federated learning across deployed battery packs to continuously improve degradation prediction models without centralizing sensitive operational data",
+          "start_date": "2024-01-08",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop a federated learning framework embedded in BMS firmware that aggregates model updates from 50 or more deployed packs across customer sites to improve degradation prediction accuracy on diverse deployment conditions without transmitting raw operational data off-device.",
+            "problem_statement": "The P001 degradation prediction model trained in 2022-2023 shows 6-9% accuracy degradation on novel deployment environments. Centralizing raw operational data raises customer data privacy concerns. No FL framework had been deployed on embedded BMS hardware under grid-edge LTE-M communication constraints.",
+            "technical_uncertainty": "Whether a federated averaging protocol could be implemented on ARM Cortex-M7 BMS nodes each operating under 10ms control cycle constraints to aggregate model gradient updates over intermittent low-bandwidth LTE-M connections, while preventing model drift from heterogeneous non-IID data distributions across customer sites.",
+            "hypotheses_tested": [
+              "FedAvg with gradient compression using top-k sparsification at 1% would reduce communication overhead sufficiently for LTE-M bandwidth",
+              "Federated training across 50 or more heterogeneous sites would improve cross-site degradation prediction MAE by at least 15% vs the static 2022 model",
+              "Differential privacy noise injection at sigma 0.01 would provide meaningful gradient privacy guarantees without degrading model convergence"
+            ],
+            "experimentation_process": [
+              "Implemented FedAvg with gradient compression in C++ on Cortex-M7 and measured communication payload with top-k sparsification at 0.5%, 1%, and 2%",
+              "Deployed prototype FL firmware to 12 internal test packs with deliberately heterogeneous cycling profiles simulating diverse customer environments",
+              "Measured model convergence, cross-site accuracy, and communication latency under simulated LTE-M bandwidth constraints",
+              "Evaluated differential privacy at sigma values of 0.005, 0.01, and 0.02 for privacy-accuracy trade-off characterization",
+              "Ran 4-month continuous FL training trial across 12-pack internal network tracking per-site prediction accuracy improvement"
+            ],
+            "alternatives_considered": [
+              "Centralized retraining on anonymized data rejected due to customer data sovereignty requirements",
+              "Transfer learning with customer-side fine-tuning not viable for utility operators lacking ML expertise",
+              "Split learning had too-high communication overhead for LTE-M bandwidth constraints"
+            ],
+            "results_or_outcome": "By Q3 2024 FL firmware with 1% gradient sparsification achieved 18KB per-round payloads viable for LTE-M. Cross-site degradation prediction MAE improved by 18.3% over the static 2022 baseline across 12 heterogeneous test packs over 4 months. Differential privacy at sigma 0.01 provided gradient obfuscation with less than 0.4% accuracy penalty. Production deployment to 8 customer sites initiated Q4 2024.",
+            "failures_or_iterations": "Initial FedAvg without gradient compression produced 2.4MB per-round payloads, 10 times over LTE-M budget. First FL trial with uniform averaging produced model drift toward the two largest sites requiring FedAvg weighting by local dataset size. Differential privacy at sigma 0.02 degraded convergence by 8% and was unacceptable."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a new edge-deployable federated learning BMS firmware architecture constituting an improved business component under IRC Sec. 41(d)(1), aimed at resolving whether FL can be implemented on embedded BMS hardware under grid-edge communication and latency constraints.",
+            "technological_in_nature": "Grounded in distributed machine learning, embedded systems, privacy-preserving computation, and electrochemistry, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The central uncertainty was whether FedAvg with gradient compression could operate on Cortex-M7 BMS nodes under LTE-M bandwidth and 10ms control cycle constraints. No prior work demonstrated embedded FL on BMS hardware at production scale. The team resolved this through communication payload optimization and 12-pack heterogeneous trial deployment.",
+            "process_of_experimentation": "Iterative experimentation including FedAvg implementation and payload benchmarking, 12-pack heterogeneous FL trial, FedAvg weighting strategy development, differential privacy noise level characterization, and 4-month continuous FL accuracy measurement."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "FederatedBMS_ArchitectureSpec_2024.pdf"
+            ],
+            "test_reports": [
+              "GradientCompression_PayloadBenchmark_2024_Q1.pdf",
+              "12Pack_FLTrial_4Month_2024_Q3.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [
+              "https://github.internal/novapulse/bms-firmware/tree/2024-federated-learning"
+            ],
+            "deployment_logs": [
+              "CustomerDeployment_FL_Q4_2024_Log.pdf"
+            ],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "Edge-Deployable BMS Firmware with On-Device Federated Learning",
+            "QP2": "Whether FedAvg with gradient compression can operate on Cortex-M7 BMS nodes under LTE-M bandwidth and 10ms control cycle constraints",
+            "QP3": "FL with 1% sparsification achieved 18KB per-round payload and 18.3% MAE improvement over static baseline"
+          }
+        },
+        {
+          "project_id": "P003",
+          "project_name": "Production-Scale SoH Estimation with Fleet Telemetry Integration",
+          "business_component": "Production-scale deployment of the SoH estimation engine with real-time fleet telemetry ingestion, online model adaptation, and anomaly detection for utility-scale battery fleet management",
+          "start_date": "2024-01-15",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Deploy the SoH transformer model at production scale across a 200-plus pack fleet with real-time telemetry ingestion, online model adaptation to bring NCA chemistry accuracy below 3% MAE, and anomaly detection to flag packs showing abnormal SoH trajectories.",
+            "problem_statement": "The 2023 SoH model achieved 3.1% MAE on NCA chemistry marginally above the 3% target, validated only on laboratory data. Production deployment on a live 200-pack utility fleet introduced distribution shift from field conditions not in training data, requiring integration with a real-time telemetry pipeline processing 50000 data points per minute.",
+            "technical_uncertainty": "Whether online adaptation of the SoH transformer model using streaming fleet telemetry could converge to below 3% NCA MAE within 90 days without catastrophic forgetting of previously learned LFP and NMC accuracy, given the non-stationary and class-imbalanced nature of real-world fleet operating data.",
+            "hypotheses_tested": [
+              "Elastic weight consolidation regularization would prevent catastrophic forgetting during online NCA adaptation",
+              "Reservoir sampling from the telemetry stream would provide a representative replay buffer for continual learning without memory overflow",
+              "An isolation forest anomaly detector trained on SoH trajectory features would achieve greater than 90% recall on known anomaly patterns"
+            ],
+            "experimentation_process": [
+              "Built real-time telemetry ingestion pipeline handling 50000 data points per minute with exactly-once processing using Apache Kafka",
+              "Implemented EWC regularization in the transformer online adaptation loop and measured Fisher information matrix estimation overhead",
+              "Evaluated reservoir sampling buffer sizes of 1K, 10K, and 100K samples for continual learning replay quality",
+              "Trained isolation forest anomaly detector on 3 years of historical cycling data and evaluated recall and precision on held-out known failure cases",
+              "Ran 6-month production deployment on 200-pack utility fleet measuring NCA SoH MAE trajectory and anomaly detection performance"
+            ],
+            "alternatives_considered": [
+              "Full model retraining caused service interruption unacceptable for 24/7 utility operations",
+              "Separate NCA-specific model defeated the cross-chemistry generalization goal",
+              "Statistical process control had insufficient sensitivity to subtle SoH trajectory deviations predictive of failure"
+            ],
+            "results_or_outcome": "By Q4 2024 online adaptation with EWC achieved NCA MAE of 2.6% after 90 days of fleet data within the 3% target. LFP and NMC accuracy remained stable at 2.3% and 2.7% MAE confirming EWC effectiveness. The isolation forest detector achieved 93% recall with a 4.2% false positive rate.",
+            "failures_or_iterations": "Initial online adaptation without EWC caused catastrophic forgetting with LFP MAE degrading from 2.4% to 4.1% after 30 days. Reservoir sampling at 1K buffer produced high-variance gradient estimates requiring expansion to 10K minimum. First anomaly detector trained on 1 year of data achieved only 74% recall requiring all 3 years of data plus SoH trajectory slope and curvature feature engineering."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a production-scale SoH estimation and fleet anomaly detection system constituting an improved business component under IRC Sec. 41(d)(1), aimed at resolving whether EWC-regularized online adaptation can achieve production-grade cross-chemistry accuracy on live fleet telemetry.",
+            "technological_in_nature": "Grounded in machine learning, continual learning theory, distributed systems, and electrochemistry, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The central uncertainty was whether EWC-regularized online adaptation could converge NCA SoH MAE below 3% without degrading previously learned chemistry accuracies. No prior work demonstrated this on a live 200-plus pack utility fleet. The team resolved this through EWC implementation, replay buffer experiments, and 6-month production deployment monitoring.",
+            "process_of_experimentation": "Telemetry pipeline construction and load testing, EWC implementation and catastrophic forgetting characterization, reservoir sampling buffer size evaluation, anomaly detector training and recall evaluation, and 6-month 200-pack production deployment with continuous accuracy monitoring."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "SoH_ProductionDeployment_Spec_2024.pdf",
+              "TelemetryPipeline_Architecture_2024.pdf"
+            ],
+            "test_reports": [
+              "EWC_ForgettingPrevention_Benchmark_2024_Q1.pdf",
+              "FleetDeployment_6Month_Report_2024_Q4.pdf",
+              "AnomalyDetector_RecallPrecision_2024_Q2.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [
+              "https://github.internal/novapulse/soh-engine/tree/2024-fleet-production"
+            ],
+            "deployment_logs": [
+              "FleetTelemetry_Uptime_Log_2024.pdf"
+            ],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "Production-Scale SoH Estimation with Fleet Telemetry Integration",
+            "QP2": "Whether EWC-regularized online adaptation can converge NCA MAE below 3% without catastrophic forgetting on live 200-pack fleet",
+            "QP3": "EWC achieved NCA MAE 2.6% after 90 days; LFP/NMC stable; anomaly detector 93% recall at 4.2% FPR"
+          }
+        },
+        {
+          "project_id": "P004",
+          "project_name": "Grid-Aware Charge Optimization Algorithm for Utility-Scale Storage",
+          "business_component": "Novel reinforcement learning charge scheduling algorithm co-optimizing battery degradation minimization with real-time grid price signals for utility-scale storage dispatch",
+          "start_date": "2024-06-01",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop a reinforcement learning agent that optimizes charge and discharge scheduling for utility-scale battery storage by jointly minimizing battery degradation to extend pack lifetime by at least 12% and maximizing revenue from real-time electricity price arbitrage, within BMS control system constraints.",
+            "problem_statement": "Utility-scale battery storage operators face a fundamental trade-off: aggressive charge cycling maximizes short-term arbitrage revenue but accelerates battery degradation. Existing rule-based schedulers optimize for one objective but not both. An RL-based optimizer aware of battery SoH and grid price forecasts could find Pareto-optimal dispatch strategies unavailable to rule-based systems.",
+            "technical_uncertainty": "Whether a deep RL agent trained in simulation on historical grid price and battery degradation data could learn a charge dispatch policy generalizing to real-time grid conditions while respecting non-linear battery degradation constraints from the P003 SoH estimation engine running concurrently on the BMS.",
+            "hypotheses_tested": [
+              "Proximal Policy Optimization with a degradation-aware reward function integrating P003 SoH estimates would outperform DDPG on the multi-objective charge scheduling task",
+              "Domain randomization over historical grid price volatility distributions would enable sim-to-real policy transfer without fine-tuning on live grid data",
+              "Incorporating P003 SoH trajectory prediction as a state feature would allow the RL agent to proactively reduce charge rate near degradation thresholds"
+            ],
+            "experimentation_process": [
+              "Built grid price simulation environment using ERCOT 2021-2023 historical LMP data with stochastic perturbation for domain randomization",
+              "Implemented degradation-aware reward function coupling P003 SoH predictions to per-cycle capacity loss estimates",
+              "Trained and compared PPO vs DDPG vs SAC on 3-year simulated grid price history evaluated on 2024 held-out ERCOT data",
+              "Evaluated sim-to-real transfer with and without domain randomization using 60-day live Austin pilot site dispatch data",
+              "Conducted ablation study comparing RL agent with vs without P003 SoH state feature to quantify integration benefit"
+            ],
+            "alternatives_considered": [
+              "Model Predictive Control insufficient to handle non-linear degradation constraints over multi-day horizons",
+              "Rule-based peak shaving with SoH threshold cutoffs cannot optimize arbitrage revenue simultaneously",
+              "Linear programming cannot model non-linear degradation dynamics or stochastic price uncertainty"
+            ],
+            "results_or_outcome": "By Q4 2024 the PPO agent with domain randomization achieved 14.2% simulated degradation reduction vs revenue-maximizing baseline while maintaining 97% of arbitrage revenue, exceeding the 12% target. Sim-to-real transfer on 60-day Austin pilot achieved 11.8% degradation reduction with 96% revenue retention. SoH state feature ablation confirmed 6.3 percentage point degradation reduction improvement from SoH integration.",
+            "failures_or_iterations": "DDPG and SAC both failed to converge stably on the multi-objective reward function with degradation constraints. Initial reward function without degradation decay modeling led the RL agent to underestimate long-horizon costs resulting in only 4% degradation reduction. Domain randomization without P003 SoH feature produced 8% sim-to-real gap requiring SoH integration to close."
+          },
+          "four_part_test": {
+            "permitted_purpose": "Development of a new grid-aware RL charge optimization system constituting a new business component under IRC Sec. 41(d)(1), aimed at discovering whether an RL agent can learn Pareto-optimal charge dispatch policies jointly optimizing battery degradation and grid arbitrage revenue.",
+            "technological_in_nature": "Grounded in reinforcement learning, control theory, electrochemistry, and power systems engineering, all established hard sciences within Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "The central uncertainty was whether a PPO agent trained in simulation could generalize to real-time grid conditions while respecting non-linear degradation constraints from live SoH estimates. No prior work demonstrated this coupling of embedded FL-BMS and SoH estimation at utility scale. The team resolved this through RL architecture comparison, reward function iterations, and 60-day live pilot deployment.",
+            "process_of_experimentation": "Grid price simulation environment construction with domain randomization, three-algorithm RL architecture comparison, degradation-aware reward function design and iteration, sim-to-real transfer evaluation on Austin pilot, and SoH feature ablation study."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "GridOptimizer_RL_ArchSpec_2024.pdf"
+            ],
+            "test_reports": [
+              "PPO_vs_DDPG_SimBenchmark_2024_Q3.pdf",
+              "AustinPilot_60Day_Dispatch_Report_2024_Q4.pdf",
+              "SoH_FeatureAblation_2024_Q3.pdf"
+            ],
+            "jira_links": [],
+            "github_links": [
+              "https://github.internal/novapulse/grid-optimizer/tree/2024-rl-dispatch"
+            ],
+            "deployment_logs": [
+              "AustinPilot_DispatchLog_2024_Q4.pdf"
+            ],
+            "other_supporting_docs": [
+              "ERCOT_LMP_DataLicense_2024.pdf"
+            ]
+          },
+          "source_answers": {
+            "QP1": "Grid-Aware Charge Optimization Algorithm for Utility-Scale Storage",
+            "QP2": "Whether PPO RL agent with SoH integration can achieve Pareto-optimal charge dispatch generalizing from simulation to live grid conditions",
+            "QP3": "PPO achieved 14.2% simulated degradation reduction; 11.8% on Austin 60-day pilot; SoH integration contributed 6.3 percentage points"
+          }
+        }
+      ],
+      "employees": [
+        {
+          "employee_id": "E001",
+          "employee_name": "Dr. Marcus Chen",
+          "job_title": "Principal Battery Systems Engineer",
+          "department": "Battery Systems Engineering",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 185000,
+          "qualified_percentage": 0.9,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_MarcusChen_2024.pdf",
+          "rd_activities_description": "Dr. Chen led the federated learning architecture design for P001, formulating the gradient compression strategy and FedAvg weighting protocol. He contributed to P004 by defining the degradation-aware RL reward function coupling P003 SoH predictions to per-cycle capacity loss estimates and reviewed sim-to-real transfer results from the Austin pilot.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.5
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.2
+            },
+            {
+              "project_id": "P004",
+              "percent_of_employee_time": 0.3
+            }
+          ]
+        },
+        {
+          "employee_id": "E002",
+          "employee_name": "Priya Nair",
+          "job_title": "Senior Electrochemistry Research Engineer",
+          "department": "Electrochemistry Research",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 168000,
+          "qualified_percentage": 0.88,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_PriyaNair_2024.pdf",
+          "rd_activities_description": "Nair led electrochemical characterization supporting P003 and P004. For P003 she characterized NCA degradation signatures used to design EWC training targets and validated the fleet anomaly detector against known NCA failure modes. For P004 she developed the electrochemical degradation model underpinning the RL reward function capacity loss estimation.",
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.55
+            },
+            {
+              "project_id": "P004",
+              "percent_of_employee_time": 0.45
+            }
+          ]
+        },
+        {
+          "employee_id": "E003",
+          "employee_name": "Jake Williams",
+          "job_title": "Embedded Firmware Engineer",
+          "department": "Embedded Firmware and Real-Time Systems",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 152000,
+          "qualified_percentage": 0.82,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_JakeWilliams_2024.pdf",
+          "rd_activities_description": "Williams implemented the FedAvg protocol with top-k gradient sparsification on Cortex-M7 for P001, resolved the communication payload overflow issue, and built the differential privacy noise injection module and LTE-M communication driver enabling production FL deployment.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.85
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.15
+            }
+          ]
+        },
+        {
+          "employee_id": "E004",
+          "employee_name": "Sofia Reyes",
+          "job_title": "Data Science and ML Engineer",
+          "department": "Data Science and Machine Learning",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 148000,
+          "qualified_percentage": 0.72,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_SofiaReyes_2024.pdf",
+          "rd_activities_description": "Reyes implemented the EWC regularization and reservoir sampling pipeline for P003 online adaptation, conducted catastrophic forgetting experiments, and trained the isolation forest anomaly detector. For P004 she implemented and evaluated the PPO, DDPG, and SAC RL agents and ran the sim-to-real transfer evaluation on Austin pilot data.",
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.45
+            },
+            {
+              "project_id": "P004",
+              "percent_of_employee_time": 0.55
+            }
+          ]
+        },
+        {
+          "employee_id": "E005",
+          "employee_name": "Robert Holt",
+          "job_title": "VP of Engineering",
+          "department": "Engineering Leadership",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 220000,
+          "qualified_percentage": 0.4,
+          "qualification_basis": "Interview",
+          "activity_type": "supervision",
+          "is_owner_officer": true,
+          "source_doc": "W2_RobertHolt_2024.pdf",
+          "rd_activities_description": "Holt supervised P001, P003, and P004 programs, approved the FedAvg weighting strategy redesign after model drift failure, directed the pivot from DDPG to PPO after RL convergence failures, reviewed all 6-month trial results, made the go/no-go decision for Austin pilot deployment, and approved the EWC approach for P003 after catastrophic forgetting failure analysis.",
+          "owner_officer_detail": "Holt qualified time is limited to direct technical supervision of active R&D programs. Business development, investor relations, and administrative functions are excluded.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.35
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.35
+            },
+            {
+              "project_id": "P004",
+              "percent_of_employee_time": 0.3
+            }
+          ]
+        },
+        {
+          "employee_id": "E006",
+          "employee_name": "Aiden Park",
+          "job_title": "Battery Algorithm Engineer",
+          "department": "Battery Systems Engineering",
+          "location": "Denver, CO",
+          "w2_box_1_wages": 148000,
+          "qualified_percentage": 0.85,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_AidenPark_2024.pdf",
+          "rd_activities_description": "Park joined NovaPulse in January 2024 dedicated to P004 grid optimization research. He built the ERCOT grid price simulation environment with domain randomization, implemented the PPO training pipeline, ran the three-algorithm comparative evaluation, and conducted the P003 SoH feature ablation study confirming 6.3 percentage point degradation benefit from SoH integration.",
+          "project_allocation": [
+            {
+              "project_id": "P004",
+              "percent_of_employee_time": 1.0
+            }
+          ]
+        }
+      ],
+      "contractors": [
+        {
+          "vendor_id": "V001",
+          "vendor_name": "BatteryTest Labs Inc.",
+          "description_of_work": "Independent NCA cell aging services for P003 online adaptation validation covering utility-scale cycling protocols from 0.5C to 2C with continuous EIS characterization",
+          "total_amount_paid": 58000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. BTL-2024-01"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_BatteryTestLabs_BTL-2024-01.pdf"
+          ]
+        },
+        {
+          "vendor_id": "V003",
+          "vendor_name": "ThermalDyn Consulting LLC",
+          "description_of_work": "Thermal modeling and CFD simulation for Austin pilot site battery enclosure thermal management under Texas summer operating conditions",
+          "total_amount_paid": 34000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Statement of Work No. TDC-2024-03"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P004",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_ThermalDynConsulting_TDC-2024-03.pdf"
+          ]
+        }
+      ],
+      "supplies": [
+        {
+          "supply_id": "S001",
+          "description": "LG M50LT NCA Li-ion cells (150 units) for P003 NCA online adaptation validation cycling consumed in accelerated aging trials",
+          "vendor": "LG Energy Solution",
+          "invoice_reference": "INV-LGES-2024-0134",
+          "amount": 18600,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-LGES-2024-0134.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        },
+        {
+          "supply_id": "S003",
+          "description": "NVIDIA Jetson Orin NX modules (6 units) for P001 FL firmware prototype deployment and OTA update pipeline testing",
+          "vendor": "NVIDIA Corporation",
+          "invoice_reference": "INV-NVIDIA-2024-0892",
+          "amount": 16800,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-NVIDIA-2024-0892.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        },
+        {
+          "supply_id": "S004",
+          "description": "Sierra Wireless RV55 LTE-M industrial routers (12 units) for P001 federated learning field communication prototype testing",
+          "vendor": "Sierra Wireless",
+          "invoice_reference": "INV-SIERRA-2024-0311",
+          "amount": 14400,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-SIERRA-2024-0311.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "cloud_computing": [
+        {
+          "cloud_id": "C001",
+          "provider": "Amazon Web Services",
+          "service_category": "ML Model Training",
+          "billing_reference": "AWS-Invoice-2024-NovaPulse-Q1Q2Q3",
+          "amount": 31200,
+          "qualified_percentage": 1.0,
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_cloud_usage": 0.6
+            },
+            {
+              "project_id": "P004",
+              "percent_of_cloud_usage": 0.4
+            }
+          ]
+        },
+        {
+          "cloud_id": "C002",
+          "provider": "Microsoft Azure",
+          "service_category": "HPC Simulation Compute",
+          "billing_reference": "Azure-Invoice-2024-NovaPulse-HPC",
+          "amount": 22500,
+          "qualified_percentage": 1.0,
+          "project_allocation": [
+            {
+              "project_id": "P004",
+              "percent_of_cloud_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "qre_calculation_rules": {
+        "include_wages": true,
+        "include_supplies": true,
+        "include_cloud": true,
+        "include_contractors": true,
+        "contractor_eligibility_rate": 0.65,
+        "default_employee_qualification_basis": "Interview",
+        "allow_sampling_methodology": false,
+        "include_bonus_in_wages": true,
+        "exclude_foreign_research": true
+      },
+      "asc_calculation_inputs": {
+        "qre_prior_years_override": {
+          "enabled": true,
+          "year_minus_1_qre": 676000,
+          "year_minus_2_qre": 601000,
+          "year_minus_3_qre": 480000
+        }
+      },
+      "business_flags": {
+        "is_startup": false,
+        "payroll_tax_offset_eligible": false,
+        "funded_by_third_party": false,
+        "funded_research_exists": false,
+        "wages_used_for_other_credits": false,
+        "prior_credit_claimed": true,
+        "prior_6765_years": [
+          "2020",
+          "2021",
+          "2022",
+          "2023"
+        ],
+        "prior_qre_amounts": {
+          "2020": 350000,
+          "2021": 480000,
+          "2022": 601000,
+          "2023": 676000
+        },
+        "section_174_filed": true
+      },
+      "output_preferences": {
+        "currency": "USD",
+        "format": "StudyDocument",
+        "include_appendices": true,
+        "include_employee_detail_table": true,
+        "include_vendor_detail_table": true,
+        "include_project_narratives": true,
+        "include_four_part_test_table": true,
+        "include_form_6765_tie_out": true
+      },
+      "disclosures_and_assumptions": {
+        "methodology_summary": "Qualified researcher interviews and contemporaneous engineering documentation including FL architecture specifications, RL training benchmarks, fleet deployment logs, telemetry pipeline records, and version-controlled firmware and ML repositories were used to substantiate qualified research expenditures for tax year 2024.",
+        "limitations": [
+          "Qualification percentages based on structured interviews corroborated by project tracking records, manager attestation, and engineering commit histories",
+          "Prior year QRE figures for ASC base calculation are based on previously filed Form 6765 returns for tax years 2021-2023",
+          "E006 Aiden Park hired January 2024 and all time was dedicated to qualified R&D from date of hire"
+        ],
+        "disclaimer_text": "This report is prepared solely for federal income tax compliance purposes under IRC Sec. 41. It does not constitute legal advice. All figures should be reviewed by qualified tax counsel before filing."
+      },
+      "golden_answer": "By 2024 NovaPulse R&D programs have grown in scope and ambition but the defining characteristic remains unchanged: we are solving problems whose answers do not exist until we run the experiments. Federated learning on an embedded BMS operating over LTE-M, nobody had done that. A reinforcement learning agent that jointly optimizes battery degradation and grid arbitrage revenue on a live utility site required building a simulation environment, comparing three RL architectures, watching two of them fail, redesigning our reward function, and deploying to a real site in Austin before we knew it worked. And the SoH model that needed to generalize across three battery chemistries on a 200-pack live fleet required discovering that elastic weight consolidation was the only path forward after watching our model forget everything about LFP batteries the moment we started adapting it to NCA. Every one of these outcomes was uncertain at the start. Every dollar we claim traces to that uncertainty.",
+      "interview_metadata": {
+        "status": "complete",
+        "interviewer": "Sandra K. Marsh, CPA",
+        "interview_date": "2025-03-18",
+        "notes": null
+      },
+      "interview_responses": {
+        "QF1": "FederatedBMS_ArchitectureSpec_2024.pdf, GradientCompression_PayloadBenchmark_2024_Q1.pdf, SoH_ProductionDeployment_Spec_2024.pdf, FleetDeployment_6Month_Report_2024_Q4.pdf, GridOptimizer_RL_ArchSpec_2024.pdf, AustinPilot_60Day_Dispatch_Report_2024_Q4.pdf",
+        "QF2": "By 2024 NovaPulse R&D programs have grown in scope but the defining characteristic remains: we are solving problems whose answers do not exist until we run the experiments."
+      },
+      "additional_documentation": [
+        "FederatedBMS_ArchitectureSpec_2024.pdf",
+        "GradientCompression_PayloadBenchmark_2024_Q1.pdf",
+        "12Pack_FLTrial_4Month_2024_Q3.pdf",
+        "DifferentialPrivacy_AccuracyTradeoff_2024_Q2.pdf",
+        "SoH_ProductionDeployment_Spec_2024.pdf",
+        "TelemetryPipeline_Architecture_2024.pdf",
+        "EWC_ForgettingPrevention_Benchmark_2024_Q1.pdf",
+        "FleetDeployment_6Month_Report_2024_Q4.pdf",
+        "AnomalyDetector_RecallPrecision_2024_Q2.pdf",
+        "GridOptimizer_RL_ArchSpec_2024.pdf",
+        "PPO_vs_DDPG_SimBenchmark_2024_Q3.pdf",
+        "AustinPilot_60Day_Dispatch_Report_2024_Q4.pdf",
+        "SoH_FeatureAblation_2024_Q3.pdf"
+      ]
+    }
+  ]
+}

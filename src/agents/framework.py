@@ -120,6 +120,7 @@ class AgentOrchestrator:
                 )
                 
                 if handoff_result:
+                    prev_agent_name = current_agent.name
                     # Agent requested handoff
                     current_agent = handoff_result.agent
                     
@@ -134,10 +135,32 @@ class AgentOrchestrator:
                     # Log handoff
                     self.agent_trace.append({
                         "event": "handoff",
-                        "from": self.agent_trace[-1]["agent"],
+                        "from": prev_agent_name,
                         "to": current_agent.name,
                         "reason": handoff_result.reason,
                         "timestamp": self._get_timestamp(),
+                    })
+
+                    # Inject a context-summary message so the receiving agent
+                    # can see what keys are available (the LLM cannot introspect
+                    # the Python context dict directly).
+                    ctx_keys = []
+                    if context.get("input_format"):
+                        ctx_keys.append(f"input_format={context['input_format']!r}")
+                    if context.get("input_type"):
+                        ctx_keys.append(f"input_type={context['input_type']!r}")
+                    if "study_data" in context:
+                        ctx_keys.append("study_data=<populated>")
+                    if "report_data" in context:
+                        ctx_keys.append("report_data=<populated>")
+                    ctx_summary = ", ".join(ctx_keys) if ctx_keys else "none"
+                    self.conversation_history.append({
+                        "role": "user",
+                        "content": (
+                            f"Handoff from {prev_agent_name}: {handoff_result.reason}. "
+                            f"Shared context keys: {ctx_summary}. "
+                            "Please proceed immediately with the appropriate tool call."
+                        ),
                     })
                     
                     continue
@@ -153,20 +176,10 @@ class AgentOrchestrator:
                     "agent_trace": self.agent_trace,
                 }
 
-            # Check if agent finished (no tool calls and has content)
-            if not message.tool_calls and message.content:
-                # Check if this is a final response
-                _done_words = ("complete", "finished", "generated", "done")
-                if any(w in message.content.lower() for w in _done_words):
-                    if self.debug:
-                        print(f"\n✓ Pipeline complete")
-                    
-                    return {
-                        "status": "success",
-                        "final_message": message.content,
-                        "context": context,
-                        "agent_trace": self.agent_trace,
-                    }
+            # Check if agent finished (no tool calls, no handoff, and is a terminal agent)
+            # Only the RenderAgent signals done via pipeline_done flag (set by pipeline_complete tool).
+            # Text-based heuristics are intentionally removed to prevent false-positive termination
+            # when intermediate agents (NarrativeAgent, etc.) mention "complete" in chat text.
         
         # Max turns reached
         return {

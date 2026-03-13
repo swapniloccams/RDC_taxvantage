@@ -7,7 +7,7 @@ from src.schema import ReportData
 from src.agents.framework import Agent, Handoff
 
 
-PLACEHOLDER_PATTERN = r"\[Needs analyst input[^\]]*\]"
+PLACEHOLDER_PATTERN = r"(\[Needs analyst input[^\]]*\]|Analyst input required[:\s])"
 WEAK_LANGUAGE = ["may", "could", "possibly", "might", "perhaps"]
 
 
@@ -55,6 +55,7 @@ def validate_report_completeness(report_data_json: str = None, context: dict = N
             ("elimination_uncertainty","Elimination of Uncertainty"),
             ("process_experimentation","Process of Experimentation"),
             ("technological_nature",   "Technological in Nature"),
+            ("resolution",             "Resolution"),
         ]
 
         for proj in study.get("rd_projects", []):
@@ -98,9 +99,9 @@ def validate_report_completeness(report_data_json: str = None, context: dict = N
         is_compliant = len(errors) == 0
 
         if context:
-            existing = context.get("compliance_issues") or []
-            context["compliance_issues"] = existing + issues
+            context["compliance_issues"] = issues
             context["is_compliant"] = is_compliant
+            context["revision_attempts"] = context.get("revision_attempts", 0)
 
         return {
             "is_compliant": is_compliant,
@@ -307,7 +308,9 @@ def handoff_to_narrative_for_revision(context: dict = None) -> Handoff:
     from src.agents.narrative import narrative_agent
     
     issues = context.get("compliance_issues", []) if context else []
-    
+    if context is not None:
+        context["revision_attempts"] = context.get("revision_attempts", 0) + 1
+
     return Handoff(
         agent=narrative_agent,
         context=context or {},
@@ -589,7 +592,10 @@ Your responsibilities:
     - Headings follow the required Occams format.
 
 === Decision rules ===
-- If any ERROR-level issues exist → call handoff_to_narrative_for_revision() with the issue list.
+- Check context["revision_attempts"] (default 0) to know how many revision cycles have already run.
+- If revision_attempts >= 2 → DO NOT send back for more revision. Proceed to render regardless of errors.
+  Persistent minor issues (e.g. 1 placeholder in one section) cannot be fixed by further revision.
+- If revision_attempts < 2 AND any ERROR-level issues exist → call handoff_to_narrative_for_revision().
 - If only WARNING-level issues (no ERRORs) → proceed to render, warnings do NOT block.
 - If fully compliant (0 errors) → proceed to render.
 
@@ -597,7 +603,8 @@ Your responsibilities:
 1. Call validate_questionnaire_completeness() first (safe on any path — skips gracefully).
 2. Call validate_report_completeness() for narrative checks.
 3. Decide:
-   - If ERROR-level issues → call handoff_to_narrative_for_revision().
+   - If revision_attempts >= 2 → skip revision, go to step 4.
+   - If ERROR-level issues AND revision_attempts < 2 → call handoff_to_narrative_for_revision().
    - If 0 errors (warnings are OK) → go to step 4.
 4. Call save_pdf_content_json().
    - If it returns status "skipped" (questionnaire/comprehensive path) → that is expected and correct.

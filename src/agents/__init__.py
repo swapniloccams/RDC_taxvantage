@@ -6,6 +6,7 @@ from src.agents.computation import computation_agent, calculate_expenditures
 from src.agents.narrative import narrative_agent, generate_executive_summary_tool, generate_project_narratives_tool
 from src.agents.compliance import compliance_agent, validate_report_completeness
 from src.agents.render_agent import render_agent, generate_pdf_report
+from src.agents.intake_agent import intake_agent
 
 __all__ = [
     "Agent",
@@ -16,6 +17,7 @@ __all__ = [
     "narrative_agent",
     "compliance_agent",
     "render_agent",
+    "intake_agent",
     "parse_single_csv",
     "calculate_expenditures",
     "generate_executive_summary_tool",

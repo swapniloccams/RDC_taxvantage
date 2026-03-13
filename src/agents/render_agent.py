@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from src.schema import ReportData
 from src.render import render_pdf
-from src.render.comprehensive_builder import build_comprehensive_pdf
+from src.render.comprehensive_builder import build_comprehensive_pdf, build_multi_year_pdf
 from src.agents.framework import Agent
 
 
@@ -117,6 +117,71 @@ def generate_comprehensive_report(output_dir: str = None, logo_path: str = None,
         return {"status": "error", "message": f"Error generation PDF: {str(e)}"}
 
 
+def generate_multi_year_report(output_dir: str = None, logo_path: str = None, context: dict = None) -> dict:
+    """
+    Tool: Generate combined multi-year PDF report.
+
+    Use this when context['is_multi_year'] is True.
+    Requires context['multi_year_study_data'] and context['multi_year_qre_results'].
+
+    Args:
+        output_dir: Directory for output files (ignored — context value always takes priority).
+        logo_path:  Path to logo image (ignored — context value always takes priority).
+        context:    Shared context dictionary.
+
+    Returns:
+        Dictionary with PDF generation status and path.
+    """
+    try:
+        if not context:
+            return {"error": "No context provided"}
+        if "multi_year_study_data" not in context:
+            return {"error": "No multi_year_study_data in context"}
+        if "multi_year_qre_results" not in context:
+            return {"error": "No multi_year_qre_results in context. Call calculate_multi_year_qre() first."}
+
+        output_dir = context.get("output_dir") or output_dir or "output"
+        logo_path = context.get("logo_path") or logo_path
+
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        logo_file = Path(logo_path) if logo_path else None
+
+        multi_year_data = context["multi_year_study_data"]
+        multi_year_qre = context["multi_year_qre_results"]
+        study_title = context.get("multi_year_title", "")
+
+        latest = multi_year_data[-1]
+        client = latest["study_metadata"]["prepared_for"]["legal_name"].replace(" ", "_")
+        years = [yr["study_metadata"]["tax_year"]["year_label"] for yr in multi_year_data]
+        year_range = f"{years[0]}-{years[-1]}"
+        pdf_filename = f"{client}_{year_range}_MultiYear_RD_Study.pdf"
+        pdf_path = output_path / pdf_filename
+
+        build_multi_year_pdf(
+            multi_year_study_data=multi_year_data,
+            multi_year_qre_results=multi_year_qre,
+            context=context,
+            output_path=pdf_path,
+            logo_path=logo_file,
+            study_title=study_title,
+        )
+
+        context["pdf_path"] = str(pdf_path)
+
+        return {
+            "status": "success",
+            "pdf_path": str(pdf_path),
+            "message": f"Generated multi-year comprehensive PDF: {pdf_filename}",
+            "years_covered": years,
+        }
+
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": f"Error generating multi-year PDF: {exc}"}
+
+
 def pipeline_complete(context: dict = None) -> dict:
     """
     Tool: Signal that the pipeline is fully complete and no further work is needed.
@@ -147,12 +212,14 @@ Your responsibilities:
   - Consistent fonts, spacing, and table styles
 
 Tool usage:
-1. If context["input_format"] is 'comprehensive_csv' or 'comprehensive_json':
+1. If context contains 'is_multi_year' == True:
+     Call generate_multi_year_report()
+2. Else if context contains 'study_data' (all comprehensive / questionnaire / CSV paths):
      Call generate_comprehensive_report()
-   Else (legacy):
+3. Else (legacy — context has 'report_data' only):
      Call generate_pdf_report()
-2. After the PDF generation tool returns successfully, IMMEDIATELY call pipeline_complete().
-3. Your final text message must contain the word "complete".
+4. After the PDF generation tool returns successfully, IMMEDIATELY call pipeline_complete().
+5. Your final text message must contain the word "complete".
 """,
-    functions=[generate_pdf_report, generate_comprehensive_report, pipeline_complete],
+    functions=[generate_pdf_report, generate_comprehensive_report, generate_multi_year_report, pipeline_complete],
 )

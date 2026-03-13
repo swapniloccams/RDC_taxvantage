@@ -19,8 +19,139 @@ from src.render.comprehensive_sections import (
     create_cloud_schedule,
     create_asc_worksheet,
     create_documentation_index,
-    create_assumptions_section
+    create_assumptions_section,
+    create_multi_year_summary_section,
 )
+
+
+def build_multi_year_pdf(
+    multi_year_study_data: list,
+    multi_year_qre_results: list,
+    context: dict,
+    output_path: Path,
+    logo_path: Path = None,
+    study_title: str = "",
+):
+    """
+    Build a combined multi-year PDF report.
+
+    Renders a multi-year QRE summary section followed by the full 10-section
+    report for the most-recent tax year (which contains the narrative content).
+
+    Args:
+        multi_year_study_data:  List of per-year RDStudyData dicts (oldest → newest).
+        multi_year_qre_results: List of per-year QRE result dicts from calculation.
+        context:                Agent context (contains narrative data for latest year).
+        output_path:            Output PDF path.
+        logo_path:              Optional logo.
+        study_title:            Title for the multi-year summary section.
+    """
+    latest_study_data = multi_year_study_data[-1]
+
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=letter,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=72,
+        title=study_title or f"Multi-Year R&D Study — {latest_study_data['study_metadata']['prepared_for']['legal_name']}",
+    )
+
+    story = []
+
+    # 0. Title Page (using most-recent year data)
+    story.extend(create_title_page(latest_study_data))
+
+    # MULTI-YEAR SUMMARY — inserted immediately after title page
+    story.extend(
+        create_multi_year_summary_section(multi_year_qre_results, study_title=study_title)
+    )
+
+    # 1. Executive Summary — with combined multi-year totals in the summary table
+    combined_total_qre = sum(
+        float(str(yr.get("total_qre", 0) or 0)) for yr in multi_year_qre_results
+    )
+    combined_fed_credit = sum(
+        float(str((yr.get("asc_computation") or {}).get("federal_credit", 0) or 0))
+        for yr in multi_year_qre_results
+    )
+    first_year = multi_year_study_data[0]["study_metadata"]["tax_year"]["year_label"]
+    last_year  = multi_year_study_data[-1]["study_metadata"]["tax_year"]["year_label"]
+    exec_ctx = dict(context)
+    exec_ctx["_multiyear_combined_qre"]    = combined_total_qre
+    exec_ctx["_multiyear_combined_credit"] = combined_fed_credit
+    exec_ctx["_multiyear_year_range"]      = f"{first_year}–{last_year}"
+    story.extend(create_executive_summary(latest_study_data, exec_ctx))
+
+    # 2. Company Background
+    story.extend(create_company_background(latest_study_data))
+
+    # 3. Project Narratives — one section per year (oldest → newest)
+    for yr_data in multi_year_study_data:
+        yr_label = yr_data["study_metadata"]["tax_year"]["year_label"]
+        if yr_data.get("rd_projects"):
+            story.extend(create_project_narratives(yr_data, year_label=yr_label))
+
+    # 4. Four-Part Test — one section per year (oldest → newest)
+    for yr_data in multi_year_study_data:
+        yr_label = yr_data["study_metadata"]["tax_year"]["year_label"]
+        if yr_data.get("rd_projects"):
+            story.extend(create_four_part_test_table(yr_data, year_label=yr_label))
+
+    # 5. Cost Methodology (most-recent year)
+    story.extend(create_cost_methodology(latest_study_data))
+
+    # 6. QRE Schedules — render per year, each with its own year-specific study_data
+    for yr_data, yr_qre in zip(multi_year_study_data, multi_year_qre_results):
+        year_label = yr_data["study_metadata"]["tax_year"]["year_label"]
+        yr_ctx = dict(context)
+        yr_ctx.update({k: v for k, v in yr_qre.items() if k != "year_label"})
+        yr_ctx["_year_label_override"] = year_label
+        # Critical: use year-specific study_data so wage/contractor/supply lookups are correct
+        yr_ctx["study_data"] = yr_data
+
+        story.extend(create_employee_wage_schedule(yr_ctx))
+        story.extend(create_contractor_schedule(yr_ctx))
+        story.extend(create_supplies_schedule(yr_ctx))
+        story.extend(create_cloud_schedule(yr_ctx))
+
+    # 7. ASC Worksheet — render per year
+    for yr_data, yr_qre in zip(multi_year_study_data, multi_year_qre_results):
+        yr_ctx = dict(context)
+        yr_ctx.update({k: v for k, v in yr_qre.items() if k != "year_label"})
+        yr_ctx["study_data"] = yr_data
+        story.extend(create_asc_worksheet(yr_ctx))
+
+    # 8. Documentation Index — aggregate all years' source docs
+    all_docs = []
+    for yr_data in multi_year_study_data:
+        all_docs.extend(yr_data.get("additional_documentation", []))
+    combined_doc_data = dict(latest_study_data)
+    combined_doc_data["additional_documentation"] = list(dict.fromkeys(all_docs))
+    # Merge all years' employees/contractors/supplies into combined_doc_data for full index
+    combined_doc_data["employees"]    = []
+    combined_doc_data["contractors"]  = []
+    combined_doc_data["supplies"]     = []
+    combined_doc_data["rd_projects"]  = []
+    for yr_data in multi_year_study_data:
+        combined_doc_data["employees"]   += yr_data.get("employees", [])
+        combined_doc_data["contractors"] += yr_data.get("contractors", [])
+        combined_doc_data["supplies"]    += yr_data.get("supplies", [])
+        combined_doc_data["rd_projects"] += yr_data.get("rd_projects", [])
+    story.extend(create_documentation_index(combined_doc_data))
+
+    # 9. Assumptions & Disclosures (most-recent year)
+    story.extend(create_assumptions_section(latest_study_data))
+
+    doc.build(
+        story,
+        canvasmaker=lambda *args, **kwargs: NumberedCanvas(
+            *args, logo_path=logo_path, **kwargs
+        ),
+    )
+    return output_path
+
 
 def build_comprehensive_pdf(study_data: dict, context: dict, output_path: Path, logo_path: Path = None):
     """

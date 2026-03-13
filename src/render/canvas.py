@@ -1,7 +1,9 @@
 """Custom canvas for page numbering and footer branding."""
 
+import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 from pathlib import Path
 
 
@@ -35,23 +37,42 @@ class NumberedCanvas(canvas.Canvas):
         page_height = self._pagesize[1]
         
         # Add logo bottom-left (if provided)
-        if self.logo_path and self.logo_path.exists():
+        if self.logo_path and Path(self.logo_path).exists():
             try:
                 logo_height = 0.6 * inch
                 logo_x = 0.5 * inch
                 logo_y = 0.3 * inch
-                
-                # Draw logo (maintaining aspect ratio)
+
+                # Use Pillow to pre-process the image so ReportLab can handle
+                # any PNG colour mode (RGBA, palette, etc.) reliably.
+                try:
+                    from PIL import Image as PILImage
+                    with PILImage.open(str(self.logo_path)) as pil_img:
+                        # Convert to RGBA then to RGB for maximum compatibility
+                        if pil_img.mode in ("RGBA", "LA", "P"):
+                            background = PILImage.new("RGB", pil_img.size, (255, 255, 255))
+                            if pil_img.mode == "P":
+                                pil_img = pil_img.convert("RGBA")
+                            background.paste(pil_img, mask=pil_img.split()[-1] if pil_img.mode == "RGBA" else None)
+                            pil_img = background
+                        buf = io.BytesIO()
+                        pil_img.save(buf, format="PNG")
+                        buf.seek(0)
+                    logo_img = ImageReader(buf)
+                except ImportError:
+                    # Pillow not available — pass path directly (works for simple PNGs)
+                    logo_img = str(self.logo_path)
+
                 self.drawImage(
-                    str(self.logo_path),
+                    logo_img,
                     logo_x,
                     logo_y,
                     height=logo_height,
                     preserveAspectRatio=True,
-                    mask='auto',
+                    mask="auto",
                 )
             except Exception as e:
-                # If logo fails, just skip it
+                # If logo fails, skip silently — don't spam the console
                 print(f"Warning: Could not add logo to page {page_num}: {e}")
         
         # Add page number bottom-right

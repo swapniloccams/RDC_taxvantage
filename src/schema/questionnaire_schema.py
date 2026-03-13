@@ -22,6 +22,50 @@ class StudyMetadataAnswers(BaseModel):
     preparer_name: str = Field(..., min_length=1)
     date_prepared: str = Field(..., description="ISO format: YYYY-MM-DD")
 
+    # Q7 — funding exclusion flag
+    funded_by_third_party: Optional[bool] = Field(
+        default=False,
+        description="Q7: Were any research activities funded by customers, grants, or third parties?",
+    )
+    # Q8 — dual-credit exclusion flag
+    wages_used_for_other_credits: Optional[bool] = Field(
+        default=False,
+        description="Q8: Were any wages used for other tax credits (ERC, WOTC, etc.)?",
+    )
+    # Company identity extras
+    dba: Optional[str] = Field(default=None, description="DBA / trade name if different from legal name")
+    state_of_incorporation: Optional[str] = Field(default=None, description="State of incorporation")
+    states_of_operation: Optional[List[str]] = Field(
+        default_factory=list,
+        description="All states where R&D activities were performed",
+    )
+    # Startup flags
+    is_startup: Optional[bool] = Field(
+        default=False,
+        description="Is the company a qualified startup (≤5 years, ≤$5M gross receipts)?",
+    )
+    payroll_tax_offset_eligible: Optional[bool] = Field(
+        default=False,
+        description="Can the credit be applied against payroll taxes instead of income tax?",
+    )
+    # Credit history
+    prior_credit_claimed: Optional[bool] = Field(
+        default=False,
+        description="Has Form 6765 been filed in a prior year?",
+    )
+    prior_6765_years: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Years in which Form 6765 was previously filed",
+    )
+    prior_qre_amounts: Optional[dict] = Field(
+        default_factory=dict,
+        description="Prior-year QRE amounts keyed by year string, e.g. {'2021': 85000}",
+    )
+    section_174_filed: Optional[bool] = Field(
+        default=False,
+        description="Has IRC §174 amortization been filed for this tax year?",
+    )
+
     @field_validator("credit_method")
     @classmethod
     def validate_credit_method(cls, v: str) -> str:
@@ -103,6 +147,20 @@ class ProjectAnswers(BaseModel):
     process_of_experimentation: str = Field(..., min_length=1,
         description="How the team systematically evaluated alternatives")
 
+    # Q12 — project dates (optional; for traceability)
+    start_date: Optional[str] = Field(
+        default=None, description="Project start date (YYYY-MM-DD or free text)"
+    )
+    end_date: Optional[str] = Field(
+        default=None, description="Project end date or 'Ongoing' (YYYY-MM-DD or free text)"
+    )
+
+    # Q13 — funding type
+    funding_type: Optional[str] = Field(
+        default="Internal",
+        description="Internal (company-funded) or Contract (client-funded)",
+    )
+
     # Evidence documentation
     jira_links: List[str] = Field(default_factory=list)
     github_links: List[str] = Field(default_factory=list)
@@ -140,6 +198,30 @@ class EmployeeAnswers(BaseModel):
         description="Fraction of total time spent on qualified research (0.0–1.0)")
     qualification_basis: str = Field(default="Interview",
         description="Interview, Time Tracking, Job Title, or Manager Estimate")
+    activity_type: str = Field(
+        default="direct_research",
+        description="direct_research | supervision | support",
+    )
+    is_owner_officer: bool = Field(
+        default=False,
+        description="True if employee is an owner or corporate officer (affects wage cap)",
+    )
+    source_doc: Optional[str] = Field(
+        default=None,
+        description="W-2 or payroll report filename used as audit evidence",
+    )
+    # D1 — Narrative description of what this employee did on R&D (feeds §6 LLM paragraph)
+    rd_activities_description: Optional[str] = Field(
+        default=None,
+        description="D1: In the employee's own words or manager's description, "
+                    "what qualified research activities did they perform?",
+    )
+    # D4 — Owner/officer specific detail (if is_owner_officer = True)
+    owner_officer_detail: Optional[str] = Field(
+        default=None,
+        description="D4: For owner/officers only — describe the specific technical activities "
+                    "they performed (excluding general management, business development, etc.)",
+    )
     project_allocation: Dict[str, float] = Field(...,
         description="Map of project_id → fraction of qualified time (values must sum to ~1.0)")
     notes: Optional[str] = None
@@ -176,6 +258,8 @@ class ContractorAnswers(BaseModel):
     description_of_work: str = Field(..., min_length=1)
     total_amount_paid: float = Field(..., ge=0)
     qualified_percentage: float = Field(..., ge=0.0, le=1.0)
+    us_based: bool = Field(True, description="Must be True — foreign research is excluded from QRE")
+    is_funded: bool = Field(False, description="True if funded by a third party — may be excluded")
     # Rights & risk (required to include contractor QRE)
     company_retains_rights: bool = Field(...,
         description="Does the company retain rights to the research?")
@@ -313,6 +397,38 @@ class QuestionnaireAnswers(BaseModel):
         ),
     )
     methodology_disclosures_answers: DisclosuresAnswers
+
+    # F1 — any additional documents mentioned during the interview
+    additional_documentation: List[str] = Field(
+        default_factory=list,
+        description=(
+            "F1: List of additional document filenames or references noted during the interview "
+            "that are not already captured in employee/contractor/supply source_doc fields."
+        ),
+    )
+
+    # F2 — client's direct quote about their qualified research (for Executive Summary)
+    golden_answer: Optional[str] = Field(
+        default=None,
+        description=(
+            "F2: In the client's own words, what do they believe constitutes their qualified research? "
+            "This quote is used verbatim in the Executive Summary."
+        ),
+    )
+
+    # Interview completion status — must be 'complete' before Agent 3 proceeds (blueprint Rule 8)
+    interview_status: str = Field(
+        default="complete",
+        description="'complete' | 'pending_followup' — set to 'complete' once all interview sections are done",
+    )
+    interview_date: Optional[str] = Field(
+        default=None,
+        description="Date the interview was completed (YYYY-MM-DD)",
+    )
+    interviewer: Optional[str] = Field(
+        default=None,
+        description="Name of the consultant who conducted the interview",
+    )
 
     # Optional global question→answer map for full traceability
     interview_responses: Optional[Dict[str, str]] = Field(

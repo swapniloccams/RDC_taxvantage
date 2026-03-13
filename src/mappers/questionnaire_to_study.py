@@ -40,10 +40,13 @@ from src.schema.study_schema import (
     ReturnType,
     ProjectStatus,
     QualificationBasis,
+    ActivityType,
+    BusinessFlags,
     QRECalculationRules,
     ASCCalculationInputs,
     QREPriorYearsOverride,
     OutputPreferences,
+    InterviewMetadata,
 )
 
 
@@ -113,6 +116,13 @@ def _map_project(p: ProjectAnswers) -> RDProject:
 
 
 def _map_employee(e: EmployeeAnswers) -> Employee:
+    # Map activity_type safely — default to DIRECT_RESEARCH if not provided
+    activity_raw = getattr(e, "activity_type", None) or "direct_research"
+    try:
+        activity = ActivityType(activity_raw)
+    except ValueError:
+        activity = ActivityType.DIRECT_RESEARCH
+
     return Employee(
         employee_id=e.employee_id,
         employee_name=e.employee_name,
@@ -122,6 +132,11 @@ def _map_employee(e: EmployeeAnswers) -> Employee:
         w2_box_1_wages=Decimal(str(e.w2_box_1_wages)),
         qualified_percentage=e.qualified_percentage,
         qualification_basis=QualificationBasis(e.qualification_basis),
+        activity_type=activity,
+        is_owner_officer=getattr(e, "is_owner_officer", False) or False,
+        source_doc=getattr(e, "source_doc", None),
+        rd_activities_description=getattr(e, "rd_activities_description", None),
+        owner_officer_detail=getattr(e, "owner_officer_detail", None),
         project_allocation=_employee_allocations(e.project_allocation),
         notes=e.notes,
         source_answers=e.source_answers or {},
@@ -135,6 +150,8 @@ def _map_contractor(c: ContractorAnswers) -> Contractor:
         description_of_work=c.description_of_work,
         total_amount_paid=Decimal(str(c.total_amount_paid)),
         qualified_percentage=c.qualified_percentage,
+        us_based=getattr(c, "us_based", True),
+        is_funded=getattr(c, "is_funded", False),
         contract_research_65_percent_rule_applies=True,
         rights_and_risk=RightsAndRisk(
             company_retains_rights=c.company_retains_rights,
@@ -222,6 +239,9 @@ def map_questionnaire_to_study(answers: QuestionnaireAnswers) -> RDStudyData:
             address=meta_a.address,
             industry=meta_a.industry,
             website=meta_a.website,
+            dba=getattr(meta_a, "dba", None),
+            state_of_incorporation=getattr(meta_a, "state_of_incorporation", None),
+            states_of_operation=getattr(meta_a, "states_of_operation", None) or [],
         ),
         prepared_by=PreparedBy(
             firm_name=meta_a.preparer_firm,
@@ -261,6 +281,21 @@ def map_questionnaire_to_study(answers: QuestionnaireAnswers) -> RDStudyData:
         disclaimer_text=disc_a.disclaimer_text,
     )
 
+    # Build BusinessFlags from metadata answers
+    prior_qre_raw = getattr(meta_a, "prior_qre_amounts", None) or {}
+    prior_qre_decimal = {yr: Decimal(str(amt)) for yr, amt in prior_qre_raw.items()}
+
+    business_flags = BusinessFlags(
+        is_startup=getattr(meta_a, "is_startup", False) or False,
+        payroll_tax_offset_eligible=getattr(meta_a, "payroll_tax_offset_eligible", False) or False,
+        funded_by_third_party=meta_a.funded_by_third_party or False,
+        wages_used_for_other_credits=meta_a.wages_used_for_other_credits or False,
+        prior_credit_claimed=getattr(meta_a, "prior_credit_claimed", False) or False,
+        prior_6765_years=getattr(meta_a, "prior_6765_years", None) or [],
+        prior_qre_amounts=prior_qre_decimal,
+        section_174_filed=getattr(meta_a, "section_174_filed", False) or False,
+    )
+
     return RDStudyData(
         study_metadata=study_metadata,
         company_background=company_background,
@@ -272,7 +307,15 @@ def map_questionnaire_to_study(answers: QuestionnaireAnswers) -> RDStudyData:
         cloud_computing=[_map_cloud(c) for c in answers.cloud_computing],
         qre_calculation_rules=QRECalculationRules(),
         asc_calculation_inputs=_map_asc_inputs(answers),
+        business_flags=business_flags,
         output_preferences=OutputPreferences(),
         disclosures_and_assumptions=disclosures,
+        golden_answer=getattr(answers, "golden_answer", None),
+        interview_metadata=InterviewMetadata(
+            status=getattr(answers, "interview_status", "complete") or "complete",
+            interview_date=getattr(answers, "interview_date", None),
+            interviewer=getattr(answers, "interviewer", None),
+        ),
+        additional_documentation=list(getattr(answers, "additional_documentation", None) or []),
         interview_responses=answers.interview_responses or {},
     )
