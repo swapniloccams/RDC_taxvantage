@@ -3,15 +3,18 @@ Generic R&D Tax Credit Pipeline Runner
 =======================================
 Reads OPENAI_API_KEY from .env automatically — no need to expose it in the terminal.
 
+LLM is ALWAYS used. Every report generation goes through the full multi-agent
+pipeline: IngestionAgent → ComputationAgent → NarrativeAgent → ComplianceAgent → RenderAgent.
+
 Usage:
-    # Full pipeline (combined multi-year report + LLM narratives)
+    # Per-project PDFs only (LLM narratives, no combined report) — DEFAULT for per-project work
+    python run_pipeline.py --input examples/clearpath_robotics_2023_2024.json --output output/clearpath_robotics --per-project
+
+    # Combined multi-year report + per-project PDFs
+    python run_pipeline.py --input examples/novapulse_multiyear.json --output output/novapulse_multiyear --per-project --combined
+
+    # Combined multi-year report only (no per-project PDFs)
     python run_pipeline.py --input examples/novapulse_multiyear.json --output output/novapulse_multiyear
-
-    # Full pipeline + per-project PDFs after the combined report
-    python run_pipeline.py --input examples/novapulse_multiyear.json --output output/novapulse_multiyear --per-project
-
-    # Per-project PDFs ONLY — no OpenAI API key required, runs in seconds
-    python run_pipeline.py --input examples/novapulse_multiyear.json --output output/novapulse_multiyear --per-project-only
 
     # Single-year CSV / questionnaire JSON (standard flow)
     python run_pipeline.py --input examples/meridian_robotics_answers.csv
@@ -36,120 +39,45 @@ def _require_api_key():
         raise SystemExit(
             "ERROR: OPENAI_API_KEY is not set.\n"
             "Add it to your .env file in the project root:\n"
-            "  OPENAI_API_KEY=sk-proj-..."
+            "  OPENAI_API_KEY=sk-proj-...\n\n"
+            "LLM is required for every report — no no-LLM path exists."
         )
     os.environ["OPENAI_API_KEY"] = api_key
 
 
 # ---------------------------------------------------------------------------
-# --per-project-only path  (no LLM — pure JSON + math + PDF)
-# ---------------------------------------------------------------------------
-
-def run_per_project_only(input_path: Path, output_dir: Path, logo_path: Path | None):
-    """
-    Generate one PDF per project from a multi-year JSON without any LLM calls.
-
-    Steps:
-      1. Parse & validate JSON with MultiYearStudyData schema.
-      2. Compute QRE for every year directly (no agents, no OpenAI).
-      3. Call generate_all_project_reports() to build the per-project PDFs.
-    """
-    import json
-    from src.schema.study_schema import MultiYearStudyData
-    from src.compute.comprehensive import calculate_all_qre_multi_year
-    from src.render.project_report_builder import generate_all_project_reports
-
-    print("\n" + "=" * 70)
-    print("PER-PROJECT REPORT GENERATOR  (no LLM — parse + compute + render)")
-    print("=" * 70)
-
-    # 1. Load & validate JSON
-    print(f"\nLoading: {input_path}")
-    try:
-        raw = json.loads(input_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"ERROR: Invalid JSON in {input_path}: {exc}")
-
-    if "tax_years" not in raw:
-        raise SystemExit(
-            "ERROR: --per-project-only requires a multi-year JSON file "
-            "(must contain a 'tax_years' key). "
-            "Single-year CSV/JSON files are not supported with this flag."
-        )
-
-    try:
-        multi_study = MultiYearStudyData(**raw)
-    except Exception as exc:
-        raise SystemExit(f"ERROR: Schema validation failed: {exc}")
-
-    # Serialise each year to plain dict (enums → strings, Decimal → float)
-    year_dicts = [json.loads(yr.model_dump_json()) for yr in multi_study.tax_years]
-    year_labels = [yr["study_metadata"]["tax_year"]["year_label"] for yr in year_dicts]
-    client_name = year_dicts[-1]["study_metadata"]["prepared_for"]["legal_name"]
-
-    print(f"Client : {client_name}")
-    print(f"Years  : {', '.join(year_labels)}")
-    print(f"Output : {output_dir}")
-
-    # 2. Compute QRE (pure math, no LLM)
-    print("\nComputing QRE for all years...")
-    try:
-        multi_year_qre_results = calculate_all_qre_multi_year(year_dicts)
-    except Exception as exc:
-        raise SystemExit(f"ERROR: QRE computation failed: {exc}")
-
-    for yr_qre in multi_year_qre_results:
-        yr = yr_qre.get("year_label", "?")
-        total = yr_qre.get("total_qre", 0)
-        asc = (yr_qre.get("asc_computation") or {}).get("federal_credit", 0)
-        print(f"  {yr}: Total QRE = ${float(total):,.0f}  |  Federal Credit = ${float(asc):,.0f}")
-
-    # 3. Generate per-project PDFs
-    output_dir.mkdir(parents=True, exist_ok=True)
-    per_project_dir = output_dir / "per_project"
-
-    context = {
-        "multi_year_study_data": year_dicts,
-        "multi_year_qre_results": multi_year_qre_results,
-        "study_data": year_dicts[-1],
-        "is_multi_year": True,
-        "multi_year_title": multi_study.study_title,
-    }
-
-    project_pdfs = generate_all_project_reports(
-        multi_year_study_data=year_dicts,
-        multi_year_qre_results=multi_year_qre_results,
-        context=context,
-        output_dir=per_project_dir,
-        logo_path=logo_path,
-    )
-
-    print(f"\n{'=' * 70}")
-    print("DONE")
-    print(f"{'=' * 70}")
-    print(f"\nGenerated {len(project_pdfs)} per-project PDF(s):")
-    for p in project_pdfs:
-        print(f"  {p}")
-
-
-# ---------------------------------------------------------------------------
-# Full pipeline path  (LLM narratives + combined report)
+# Full pipeline path  (LLM narratives — always on)
 # ---------------------------------------------------------------------------
 
 def run_full_pipeline(
     input_path: Path,
     output_dir: Path,
     logo_path: Path | None,
-    also_per_project: bool,
+    per_project_only: bool,
+    also_combined: bool,
 ):
-    """Run the full multi-agent pipeline (requires OPENAI_API_KEY)."""
+    """
+    Run the full multi-agent pipeline (LLM always required).
+
+    Modes:
+      per_project_only=True,  also_combined=False  → per-project PDFs only  (--per-project)
+      per_project_only=False, also_combined=False  → combined multi-year PDF only (default)
+      per_project_only=True,  also_combined=True   → combined + per-project PDFs (--per-project --combined)
+    """
     from src.pipeline.coordinator import run_pipeline
 
+    print("\n" + "=" * 70)
+    print("R&D TAX CREDIT PIPELINE  (LLM — always active)")
+    print("=" * 70)
     print(f"\nInput  : {input_path}")
     print(f"Output : {output_dir}")
     print(f"Logo   : {logo_path or 'None (skipped)'}")
-    if also_per_project:
-        print("Mode   : combined report + per-project reports")
+    if per_project_only and not also_combined:
+        print("Mode   : per-project PDFs only (combined report skipped)")
+    elif per_project_only and also_combined:
+        print("Mode   : combined report + per-project PDFs")
+    else:
+        print("Mode   : combined multi-year report only")
     print()
 
     result = run_pipeline(
@@ -159,17 +87,20 @@ def run_full_pipeline(
     )
 
     ctx = result.get("context", {})
-    pdf = ctx.get("pdf_path") or str(output_dir / "*.pdf")
-    print(f"\nDone. Combined PDF saved to: {pdf}")
 
-    # Optional per-project PDFs after the combined report
-    if also_per_project:
+    # ── Combined report ────────────────────────────────────────────────────
+    if not per_project_only or also_combined:
+        pdf = ctx.get("pdf_path") or str(output_dir / "*.pdf")
+        print(f"\nCombined PDF saved to: {pdf}")
+
+    # ── Per-project PDFs ───────────────────────────────────────────────────
+    if per_project_only or also_combined:
         multi_year_data = ctx.get("multi_year_study_data")
-        multi_year_qre = ctx.get("multi_year_qre_results")
+        multi_year_qre  = ctx.get("multi_year_qre_results")
         if not multi_year_data or not multi_year_qre:
             print(
-                "\n[WARNING] --per-project was requested but the pipeline did not produce "
-                "multi_year_study_data / multi_year_qre_results in context. "
+                "\n[WARNING] Per-project reports were requested but the pipeline did not "
+                "return multi_year_study_data / multi_year_qre_results in context.\n"
                 "Per-project reports require a multi-year JSON input (containing 'tax_years' key)."
             )
         else:
@@ -187,6 +118,10 @@ def run_full_pipeline(
             for p in project_pdfs:
                 print(f"  {p}")
 
+    print(f"\n{'=' * 70}")
+    print("DONE")
+    print(f"{'=' * 70}")
+
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -194,21 +129,23 @@ def run_full_pipeline(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run the R&D Tax Credit multi-agent pipeline.",
+        description="Run the R&D Tax Credit multi-agent pipeline (LLM always active).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Full pipeline (LLM narratives + combined PDF)
+  # Per-project PDFs with full LLM narratives (most common usage)
+  python run_pipeline.py --input examples/clearpath_robotics_2023_2024.json --per-project
+
+  # Per-project PDFs + combined multi-year report
+  python run_pipeline.py --input examples/novapulse_multiyear.json --per-project --combined
+
+  # Combined multi-year report only (no per-project PDFs)
   python run_pipeline.py --input examples/novapulse_multiyear.json
-
-  # Per-project PDFs only — fast, no API key needed
-  python run_pipeline.py --input examples/novapulse_multiyear.json --per-project-only
-
-  # Full pipeline + per-project PDFs afterwards
-  python run_pipeline.py --input examples/novapulse_multiyear.json --per-project
 
   # Single-year CSV
   python run_pipeline.py --input examples/meridian_robotics_answers.csv
+
+NOTE: LLM (OpenAI) is ALWAYS used. Set OPENAI_API_KEY in your .env file.
         """,
     )
     parser.add_argument(
@@ -234,30 +171,22 @@ Examples:
         action="store_true",
         default=False,
         help=(
-            "After generating the combined report, also produce one PDF per project. "
-            "Only applies to multi-year JSON inputs. "
-            "Per-project PDFs are saved to <output>/per_project/."
+            "Generate one PDF per project with full LLM narratives. "
+            "The combined multi-year report is skipped unless you also pass --combined. "
+            "Only applies to multi-year JSON inputs."
         ),
     )
     parser.add_argument(
-        "--per-project-only",
+        "--combined",
         action="store_true",
         default=False,
         help=(
-            "Generate ONLY per-project PDFs — skip the combined multi-year report entirely. "
-            "Does NOT call OpenAI (no API key required). Runs in seconds. "
-            "Only works with multi-year JSON inputs."
+            "Also generate the combined multi-year report. "
+            "Use together with --per-project to produce both outputs. "
+            "Without --per-project, the combined report is always generated."
         ),
     )
     args = parser.parse_args()
-
-    # Validate: can't use both flags together
-    if args.per_project and args.per_project_only:
-        raise SystemExit(
-            "ERROR: --per-project and --per-project-only are mutually exclusive. "
-            "Use --per-project-only to skip the combined report, "
-            "or --per-project to generate both."
-        )
 
     input_path = Path(args.input)
     if not input_path.exists():
@@ -271,18 +200,16 @@ Examples:
         print(f"Warning: Logo not found at '{logo_path}' — report will be generated without logo.")
         logo_path = None
 
-    if args.per_project_only:
-        # Fast path — no LLM, no API key needed
-        run_per_project_only(input_path, output_dir, logo_path)
-    else:
-        # Full pipeline — requires OPENAI_API_KEY
-        _require_api_key()
-        run_full_pipeline(
-            input_path=input_path,
-            output_dir=output_dir,
-            logo_path=logo_path,
-            also_per_project=args.per_project,
-        )
+    # LLM is always required — validate the key before doing anything
+    _require_api_key()
+
+    run_full_pipeline(
+        input_path=input_path,
+        output_dir=output_dir,
+        logo_path=logo_path,
+        per_project_only=args.per_project,
+        also_combined=args.combined,
+    )
 
 
 if __name__ == "__main__":

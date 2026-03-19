@@ -48,7 +48,8 @@ def validate_report_completeness(report_data_json: str = None, context: dict = N
                 "issue": "Executive summary contains placeholder text",
             })
 
-        # Per-project narrative sections
+        # Per-project narrative sections — check ALL years, not just the last year.
+        # Build a flat list of (year_label, project_dict) for every project in every year.
         narrative_keys = [
             ("project_description",    "Project Description"),
             ("new_improved_component", "New/Improved Business Component"),
@@ -58,15 +59,28 @@ def validate_report_completeness(report_data_json: str = None, context: dict = N
             ("resolution",             "Resolution"),
         ]
 
-        for proj in study.get("rd_projects", []):
+        multi_year_data = context.get("multi_year_study_data") or []
+        all_proj_slots = []  # (year_label, proj_dict)
+        if multi_year_data:
+            for yr_data in multi_year_data:
+                yr_label = yr_data.get("study_metadata", {}).get("tax_year", {}).get("year_label", "?")
+                for proj in yr_data.get("rd_projects", []):
+                    all_proj_slots.append((yr_label, proj))
+        else:
+            yr_label = study.get("study_metadata", {}).get("tax_year", {}).get("year_label", "?")
+            for proj in study.get("rd_projects", []):
+                all_proj_slots.append((yr_label, proj))
+
+        for yr_label, proj in all_proj_slots:
             project_name = proj.get("project_name", proj.get("project_id", "Unknown"))
+            section_prefix = f"{yr_label} — {project_name}"
             gen = proj.get("generated_narratives") or {}
 
             if not gen:
                 issues.append({
                     "severity": "ERROR",
-                    "section": project_name,
-                    "issue": "No generated_narratives found — generate_project_narratives_tool was not called for this project",
+                    "section": section_prefix,
+                    "issue": "No generated_narratives found — generate_project_narratives_tool was not called for this project-year",
                 })
                 continue
 
@@ -75,13 +89,13 @@ def validate_report_completeness(report_data_json: str = None, context: dict = N
                 if not text:
                     issues.append({
                         "severity": "ERROR",
-                        "section": f"{project_name} — {label}",
+                        "section": f"{section_prefix} — {label}",
                         "issue": "Narrative section missing",
                     })
                 elif re.search(PLACEHOLDER_PATTERN, text):
                     issues.append({
                         "severity": "ERROR",
-                        "section": f"{project_name} — {label}",
+                        "section": f"{section_prefix} — {label}",
                         "issue": "Contains placeholder text — more source data required",
                     })
                 else:
@@ -89,7 +103,7 @@ def validate_report_completeness(report_data_json: str = None, context: dict = N
                         if re.search(rf"\b{weak_word}\b", text, re.IGNORECASE):
                             issues.append({
                                 "severity": "WARNING",
-                                "section": f"{project_name} — {label}",
+                                "section": f"{section_prefix} — {label}",
                                 "issue": f"Contains weak language: '{weak_word}'",
                             })
                             break
@@ -249,13 +263,25 @@ def validate_questionnaire_completeness(context: dict = None) -> dict:
         total = sum(
             (a.get("percent_of_employee_time") or 0.0) for a in allocations
         )
-        if not (0.98 <= total <= 1.02):
+        # Employees legitimately spend < 100% of their time on R&D.
+        # Only flag if the total R&D allocation exceeds 1.0 (which would be a data error),
+        # or if no allocation is recorded at all while the employee has a qualified_percentage > 0.
+        if total > 1.02:
             issues.append({
                 "severity": "ERROR",
                 "section": f"Employee {eid}",
                 "issue": (
                     f"Project allocations sum to {total:.4f} — "
-                    "expected approximately 1.0"
+                    "total R&D allocation cannot exceed 100%"
+                ),
+            })
+        elif total == 0 and (emp.get("qualified_percentage") or 0) > 0:
+            issues.append({
+                "severity": "WARNING",
+                "section": f"Employee {eid}",
+                "issue": (
+                    "No project_allocation entries found — "
+                    "unable to attribute wages to specific projects"
                 ),
             })
 

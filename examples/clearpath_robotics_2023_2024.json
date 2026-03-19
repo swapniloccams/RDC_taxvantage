@@ -1,0 +1,938 @@
+{
+  "study_title": "ClearPath Robotics Inc. \u2014 2-Year R&D Tax Credit Study (2023\u20132024)",
+  "combined_credit_method": "ASC",
+  "tax_years": [
+    {
+      "study_metadata": {
+        "prepared_for": {
+          "legal_name": "ClearPath Robotics Inc.",
+          "ein": "82-4716390",
+          "entity_type": "C-Corp",
+          "address": "1200 Innovation Drive, Austin, TX 78701",
+          "industry": "Industrial Robotics / Autonomous Systems",
+          "website": "https://clearpathrobotics.io",
+          "dba": null,
+          "state_of_incorporation": "TX",
+          "states_of_operation": [
+            "TX",
+            "CA"
+          ]
+        },
+        "prepared_by": {
+          "firm_name": "Occams Advisory",
+          "preparer_name": "R&D Tax Credit Team",
+          "date_prepared": "2024-06-01"
+        },
+        "tax_year": {
+          "year_label": "2023",
+          "start_date": "2023-01-01",
+          "end_date": "2023-12-31"
+        },
+        "credit_method": "ASC",
+        "notes": "Two-year study covering autonomous warehouse navigation and computer vision R&D."
+      },
+      "company_background": {
+        "business_overview": "ClearPath Robotics Inc. designs and manufactures autonomous mobile robots (AMRs) for warehouse logistics and industrial automation. Founded in 2019, the company develops proprietary software stacks for real-time path planning, computer vision-based object recognition, and fleet coordination. In 2023, the engineering team focused on overcoming fundamental limitations in dynamic obstacle avoidance and improving object recognition accuracy in low-light warehouse environments.",
+        "products_and_services": [
+          "ClearBot-200: Autonomous mobile robot for pallet transport in warehouse environments",
+          "ClearPath Fleet Manager: Cloud-based fleet coordination and task orchestration software",
+          "ClearVision SDK: Computer vision toolkit for real-time object and person detection",
+          "ClearNav Engine: Onboard path planning and obstacle avoidance firmware"
+        ],
+        "rd_departments": [
+          "Robotics Software Engineering \u2014 path planning, localization, and fleet coordination",
+          "Computer Vision Research \u2014 object detection, semantic segmentation, and depth estimation",
+          "Embedded Systems Engineering \u2014 real-time firmware, sensor fusion, and motor control"
+        ],
+        "locations": [
+          "Austin, TX (HQ and primary R&D)"
+        ],
+        "org_structure_summary": "ClearPath operates from its Austin headquarters, where all R&D functions are co-located. The engineering team of 18 FTEs is organized into three technical groups: Robotics Software, Computer Vision Research, and Embedded Systems."
+      },
+      "gross_receipts": {
+        "year_0": 4200000,
+        "year_minus_1": 2800000,
+        "year_minus_2": 1600000,
+        "year_minus_3": 800000
+      },
+      "rd_projects": [
+        {
+          "project_id": "P001",
+          "project_name": "Adaptive Path Planning Algorithm for Dynamic Obstacle Avoidance",
+          "business_component": "Novel real-time path planning firmware capable of rerouting around moving obstacles \u2014 forklifts, personnel, and rogue pallets \u2014 within 50ms response latency on ARM Cortex-A72 embedded hardware.",
+          "start_date": "2023-01-10",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop a computationally efficient path re-planning algorithm that handles fully dynamic obstacle fields in real time on resource-constrained embedded processors, without relying on cloud offload.",
+            "problem_statement": "Existing warehouse AMRs use static or semi-static maps and require 200\u2013500ms to recompute paths around moving obstacles. In high-traffic warehouses, this latency causes frequent robot stops, halving throughput and making human-robot co-operation unsafe.",
+            "technical_uncertainty": "Whether a modified D* Lite graph search with predictive obstacle velocity estimation could converge within 50ms on an ARM Cortex-A72 at 1.8GHz, given that the obstacle field changes on every sensor tick (20Hz LiDAR). No published benchmark existed for this constraint combination at project start.",
+            "hypotheses_tested": [
+              "D* Lite with lazy deletion could reduce re-expansion cost sufficiently for sub-50ms convergence",
+              "Kalman filter-based velocity estimation would provide accurate enough 250ms look-ahead for predictive re-routing",
+              "Hierarchical path decomposition (global RRT* + local D* Lite) would outperform flat D* Lite in cluttered warehouse grids"
+            ],
+            "experimentation_process": [
+              "Implemented baseline D* Lite on ARM Cortex-A72 emulation; profiled worst-case re-expansion at 847ms \u2014 17x over target",
+              "Introduced lazy deletion and incremental heuristic updates; reduced worst-case to 210ms across 500 randomised maps",
+              "Implemented Kalman velocity predictor; integrated predicted obstacle positions into cost function \u2014 reduced emergency stops by 63% in simulation",
+              "Evaluated hierarchical decomposition: global RRT* for macro-path, local D* Lite for 3m window; achieved 44ms median latency in hardware trials",
+              "Conducted 72-hour continuous operation trials on physical ClearBot-200 in simulated warehouse; logged 1,840 dynamic obstacle events \u2014 98.7% resolved within 50ms target"
+            ],
+            "alternatives_considered": [
+              "Cloud-offloaded path planning rejected: 80\u2013120ms round-trip latency plus connectivity dependency unacceptable for safety-critical re-routing",
+              "RRT* only (no D* Lite hybrid): median latency 78ms, variance too high \u2014 5th percentile exceeded 200ms",
+              "DWA (Dynamic Window Approach): suited for slow reactive navigation only, not full re-planning in high-speed pallet environments"
+            ],
+            "results_or_outcome": "By Q4 2023, the hierarchical D* Lite + Kalman predictor achieved 44ms median path re-planning latency (P99: 49ms) on production hardware. Emergency stop rate dropped from 1 per 8 minutes to 1 per 2.3 hours in warehouse trials. Solution patented under provisional application US2023-CLR-001.",
+            "failures_or_iterations": "Initial Kalman filter tuning with fixed process noise covariance failed \u2014 warehouse floor vibration introduced correlated noise, causing the predictor to diverge after 4\u20136 seconds. Adaptive noise covariance (AKFQ) was introduced in iteration 3, resolving the divergence. Two firmware revisions required after discovering integer overflow in the cost accumulator on 32-bit ARM builds."
+          },
+          "four_part_test": {
+            "permitted_purpose": "The project aimed to develop new embedded firmware constituting a new business component under IRC Sec. 41(d)(1) \u2014 specifically a real-time adaptive path planning engine for autonomous mobile robots. The work was directed at discovering information to eliminate uncertainty about whether sub-50ms dynamic re-planning is achievable on constrained embedded hardware, with the purpose of improving product capability and operational safety.",
+            "technological_in_nature": "Activities relied on principles of computer science (graph search algorithms, D* Lite, RRT*), control theory (Kalman filtering, dynamic window approach), and embedded systems engineering (ARM Cortex-A72 real-time constraints, integer arithmetic optimisation). All techniques fall within established hard sciences under Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "At project inception, it was genuinely uncertain whether D* Lite with predictive obstacle velocity estimation could converge within 50ms on ARM Cortex-A72 hardware at 20Hz LiDAR tick rate. No published literature addressed this specific constraint combination. The team systematically resolved uncertainty through hardware benchmarking, Kalman filter variants, and hierarchical decomposition experiments spanning Q1\u2013Q4 2023.",
+            "process_of_experimentation": "The team evaluated five distinct algorithmic approaches \u2014 baseline D* Lite, lazy-deletion D* Lite, Kalman-augmented D* Lite, hierarchical RRT*+D* Lite, and DWA \u2014 through iterative hardware trials, simulation benchmarks across 500 randomised obstacle maps, and 72-hour physical warehouse stress tests. Hypotheses were formed, tested against measured latency distributions, and rejected or refined based on empirical results."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "PathPlanning_Algorithm_Spec_v1_2023Q1.pdf",
+              "PathPlanning_Algorithm_Spec_v3_2023Q3.pdf"
+            ],
+            "test_reports": [
+              "DStarLite_Latency_Benchmark_2023Q1.pdf",
+              "Kalman_Predictor_Tuning_Report_2023Q2.pdf",
+              "WarehouseTrial_72Hr_Results_2023Q4.pdf"
+            ],
+            "jira_links": [
+              "CPRBT-1201",
+              "CPRBT-1345",
+              "CPRBT-1567"
+            ],
+            "github_links": [
+              "clearpath/clearnav-engine"
+            ],
+            "deployment_logs": [
+              "ClearBot200_FleetTrial_Log_2023Q4.csv"
+            ],
+            "other_supporting_docs": [
+              "ProvisionalPatent_US2023CLR001.pdf"
+            ]
+          },
+          "source_answers": {
+            "QP1": "We were trying to make our robots react to moving obstacles in under 50ms \u2014 fast enough that they never have to stop in a busy warehouse. The problem was doing this on cheap embedded processors without a cloud connection.",
+            "QP2": "We tested D* Lite, RRT*, and dynamic window approaches. D* Lite in a hybrid form with a Kalman predictor ended up being the breakthrough \u2014 but it took most of the year to get it stable.",
+            "QP3": "The big uncertainty was whether the maths would fit inside the time budget on the chip we use. We had no reference to compare against at the start."
+          }
+        },
+        {
+          "project_id": "P002",
+          "project_name": "Low-Light Computer Vision Module for Warehouse Object Recognition",
+          "business_component": "A custom-trained convolutional neural network (EfficientDet-D2 fine-tuned on synthetic+real warehouse imagery) achieving >92% mAP on pallet, personnel, and forklift detection at illuminance levels below 50 lux.",
+          "start_date": "2023-03-01",
+          "end_date": "2023-12-15",
+          "status": "Completed",
+          "technical_summary": {
+            "objective": "Develop and validate a computer vision model capable of reliably detecting warehouse objects (pallets, personnel, forklifts) in low-light conditions (10\u201350 lux) at 15fps on NVIDIA Jetson Orin Nano, without requiring additional lighting infrastructure.",
+            "problem_statement": "Standard warehouse object detection models trained on well-lit imagery fail catastrophically below 100 lux \u2014 mAP drops from 94% to below 40% in overnight shifts where full lighting is not maintained. Installing additional lighting across a 50,000 sq ft warehouse costs $180,000+. A software-only solution was needed.",
+            "technical_uncertainty": "Whether EfficientDet-D2 fine-tuned on a synthetic low-light augmentation pipeline could generalise to real warehouse low-light conditions without requiring a prohibitively large real-world labelled dataset. The domain gap between synthetic noise models and real sensor noise characteristics was unknown at project inception.",
+            "hypotheses_tested": [
+              "Synthetic low-light augmentation (gamma correction, Poisson noise injection, ISO grain simulation) would reduce domain gap sufficiently for real-world deployment",
+              "Knowledge distillation from a large teacher model (YOLOv8-L) to EfficientDet-D2 would preserve accuracy while meeting 15fps latency on Jetson Orin Nano",
+              "Multi-spectral data fusion (RGB + low-resolution IR) would outperform RGB-only at extreme low-light levels below 20 lux"
+            ],
+            "experimentation_process": [
+              "Constructed synthetic low-light augmentation pipeline: 4 augmentation strategies applied to 12,000 COCO-warehouse images",
+              "Collected 2,400 real warehouse images at 10/20/50/100 lux across 3 warehouse sites; labelled by 2 annotators with inter-annotator IoU >0.88",
+              "Trained EfficientDet-D2 baseline on synthetic-only data: mAP 61% on real test set \u2014 unacceptable domain gap confirmed",
+              "Applied knowledge distillation from YOLOv8-L teacher: mAP improved to 79% \u2014 still below 92% target",
+              "Mixed-domain fine-tuning (80% synthetic, 20% real): mAP 89% \u2014 near target; added test-time augmentation to reach 91.4%",
+              "Multi-spectral fusion experiments: IR channel improved sub-20-lux performance from 74% to 88% mAP, but added 12ms latency \u2014 marginal benefit",
+              "Final model: EfficientDet-D2 with mixed-domain training, 92.3% mAP at 50 lux, 88.1% at 20 lux; 14.7fps on Jetson Orin Nano"
+            ],
+            "alternatives_considered": [
+              "YOLOv8-S direct deployment: 37ms inference, only 11fps \u2014 failed latency requirement",
+              "Hardware upgrade to Jetson AGX Orin: 3x unit cost increase, rejected on commercial grounds",
+              "Active IR illuminator add-on: $2,800 per robot, rejected as contrary to software-only project goal"
+            ],
+            "results_or_outcome": "Final EfficientDet-D2 model achieved 92.3% mAP at 50 lux and 88.1% at 20 lux at 14.7fps \u2014 meeting all deployment specifications. Deployed to 12 ClearBot-200 units in pilot warehouse (Austin, TX) in December 2023. False positive rate for personnel detection: 0.3% \u2014 within safety specification.",
+            "failures_or_iterations": "First synthetic augmentation pipeline underestimated real sensor read noise by 2.4dB, causing model to learn noise patterns not present in deployment hardware. Required full pipeline rebuild in iteration 2. Knowledge distillation with temperature T=4 caused mode collapse on forklift class \u2014 temperature tuned to T=2.5 in iteration 4."
+          },
+          "four_part_test": {
+            "permitted_purpose": "The project aimed to develop a new computer vision business component under IRC Sec. 41(d)(1) \u2014 a low-light object detection model for warehouse AMRs. The work was directed at discovering information to eliminate uncertainty about whether synthetic data augmentation can bridge the domain gap to real low-light warehouse conditions, with the purpose of enabling autonomous robot operation during low-light shifts.",
+            "technological_in_nature": "Activities relied on principles of computer science (convolutional neural networks, knowledge distillation, EfficientDet architecture), machine learning (transfer learning, domain adaptation, data augmentation), and optical engineering (illuminance physics, sensor noise modelling). All techniques are grounded in established sciences under Sec. 41(d)(1)(B).",
+            "elimination_of_uncertainty": "At project inception, it was genuinely uncertain whether synthetic low-light augmentation could generalise to real warehouse sensor noise without large-scale real-world labelled data. The domain gap between synthetic and real noise characteristics was not documented in published literature for this class of industrial environment. The team resolved uncertainty through controlled multi-site data collection, iterative training experiments, and knowledge distillation trials spanning Q1\u2013Q4 2023.",
+            "process_of_experimentation": "The team evaluated six iterative training configurations \u2014 synthetic-only, distillation from YOLOv8-L, mixed-domain fine-tuning, test-time augmentation, multi-spectral fusion, and combined approaches \u2014 measuring mAP against a held-out real-world test set at each step. Hypotheses about domain gap reduction were tested empirically against annotated real-world imagery collected across three independent warehouse sites."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "VisionModule_Architecture_Spec_2023Q1.pdf",
+              "LowLight_Augmentation_Pipeline_Design_2023Q2.pdf"
+            ],
+            "test_reports": [
+              "EfficientDet_Baseline_Eval_Report_2023Q2.pdf",
+              "KnowledgeDistillation_mAP_Results_2023Q3.pdf",
+              "WarehousePilot_Deployment_Report_2023Q4.pdf"
+            ],
+            "jira_links": [
+              "CPVIS-201",
+              "CPVIS-344",
+              "CPVIS-412"
+            ],
+            "github_links": [
+              "clearpath/clearvision-sdk"
+            ],
+            "deployment_logs": [
+              "Pilot_Warehouse_Austin_Dec2023_Log.csv"
+            ],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "We needed the robots to see in the dark \u2014 warehouses run overnight shifts at very low lighting and our off-the-shelf model was basically blind below 50 lux. We had to build our own solution.",
+            "QP2": "The main question was whether we could fake enough dark training data synthetically to avoid collecting thousands of real dark images. Turns out you can get 80% of the way there but you still need some real data for fine-tuning.",
+            "QP3": "We tried multi-spectral with IR sensors too but the latency cost wasn't worth it \u2014 the RGB solution got close enough to our spec."
+          }
+        }
+      ],
+      "employees": [
+        {
+          "employee_id": "E001",
+          "employee_name": "Dr. Sarah Okonkwo",
+          "job_title": "Director of Robotics Software Engineering",
+          "department": "Robotics Software Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 185000,
+          "qualified_percentage": 0.8,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_SarahOkonkwo_2023.pdf",
+          "rd_activities_description": "Dr. Okonkwo led the algorithmic design of the adaptive path planning system for P001. She authored the D* Lite variant specification, defined the Kalman filter architecture for obstacle velocity prediction, and directed the hierarchical path decomposition experiments. She reviewed all benchmark results and made final algorithmic decisions.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.7
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.1
+            }
+          ]
+        },
+        {
+          "employee_id": "E002",
+          "employee_name": "Marcus Rivera",
+          "job_title": "Senior Robotics Software Engineer",
+          "department": "Robotics Software Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 148000,
+          "qualified_percentage": 0.9,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_MarcusRivera_2023.pdf",
+          "rd_activities_description": "Rivera implemented the D* Lite lazy-deletion variant and the hierarchical RRT*+D* Lite hybrid on ARM Cortex-A72 hardware. He conducted all latency profiling, identified the integer overflow defect in the 32-bit cost accumulator, and implemented the adaptive Kalman noise covariance (AKFQ) fix. He authored the 72-hour warehouse trial protocol and logged all obstacle event data.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.9
+            }
+          ]
+        },
+        {
+          "employee_id": "E003",
+          "employee_name": "Aisha Patel",
+          "job_title": "Computer Vision Research Engineer",
+          "department": "Computer Vision Research",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 142000,
+          "qualified_percentage": 0.95,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_AishaPatel_2023.pdf",
+          "rd_activities_description": "Patel designed and implemented the synthetic low-light augmentation pipeline for P002, including gamma correction, Poisson noise injection, and ISO grain simulation layers. She coordinated real-world image collection across three warehouse sites, managed annotation quality with IoU-based inter-annotator agreement, and ran all EfficientDet-D2 training experiments including knowledge distillation from YOLOv8-L.",
+          "project_allocation": [
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.95
+            }
+          ]
+        },
+        {
+          "employee_id": "E004",
+          "employee_name": "Tom Nguyen",
+          "job_title": "Embedded Systems Engineer",
+          "department": "Embedded Systems Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 132000,
+          "qualified_percentage": 0.75,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_TomNguyen_2023.pdf",
+          "rd_activities_description": "Nguyen ported the ClearNav path planning firmware to the ARM Cortex-A72 production board, implemented interrupt-driven LiDAR data ingestion at 20Hz, and optimised memory allocation to meet the 2MB SRAM constraint for the path planner. He also integrated the EfficientDet-D2 inference engine on Jetson Orin Nano and validated 14.7fps throughput under thermal stress conditions.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.5
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.25
+            }
+          ]
+        },
+        {
+          "employee_id": "E005",
+          "employee_name": "Jordan Lee",
+          "job_title": "CEO / Co-Founder",
+          "department": "Executive",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 220000,
+          "qualified_percentage": 0.25,
+          "qualification_basis": "Interview",
+          "activity_type": "supervision",
+          "is_owner_officer": true,
+          "owner_officer_detail": "Lee's qualified time consists exclusively of direct technical supervision of active R&D programs \u2014 design reviews, architecture sign-off, and prototype evaluation. General management, board meetings, investor relations, and business development time is excluded.",
+          "source_doc": "W2_JordanLee_2023.pdf",
+          "rd_activities_description": "Lee provided technical oversight for both R&D programs, conducting weekly architecture reviews for P001 path planning and monthly model evaluation sessions for P002. His qualified time excludes all business development and management activities.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.6
+            },
+            {
+              "project_id": "P002",
+              "percent_of_employee_time": 0.4
+            }
+          ]
+        }
+      ],
+      "contractors": [
+        {
+          "vendor_id": "V001",
+          "vendor_name": "RoboTest Solutions LLC",
+          "description_of_work": "Independent hardware-in-the-loop (HIL) testing of the ClearNav path planning firmware on ARM Cortex-A72 test rigs. Provided 500 randomised obstacle map test cases and generated latency distribution reports.",
+          "total_amount_paid": 38000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. RTS-2023-03"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_RoboTestSolutions_RTS-2023-03.pdf",
+            "INV-RTS-2023-Q2.pdf"
+          ]
+        },
+        {
+          "vendor_id": "V002",
+          "vendor_name": "DataLabel Pro Inc.",
+          "description_of_work": "Manual annotation of 2,400 real warehouse images at four illuminance levels for the low-light computer vision training dataset. Provided bounding box labels for pallets, personnel, and forklifts with IoU quality validation.",
+          "total_amount_paid": 22500,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. DLP-2023-07"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P002",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_DataLabelPro_DLP-2023-07.pdf",
+            "INV-DLP-2023-Q3.pdf"
+          ]
+        }
+      ],
+      "supplies": [
+        {
+          "supply_id": "S001",
+          "description": "NVIDIA Jetson Orin Nano development kits (8 units) for P002 computer vision model inference benchmarking and production integration testing",
+          "vendor": "NVIDIA / Mouser Electronics",
+          "invoice_reference": "INV-MOUSER-2023-0441",
+          "amount": 7200,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-MOUSER-2023-0441.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P002",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        },
+        {
+          "supply_id": "S002",
+          "description": "LiDAR sensor units (RPLIDAR A3, 4 units) consumed in P001 hardware-in-the-loop path planning trials \u2014 sensors damaged during 72-hour stress testing and written off",
+          "vendor": "Slamtec / Digi-Key",
+          "invoice_reference": "INV-DIGIKEY-2023-1182",
+          "amount": 4800,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-DIGIKEY-2023-1182.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "cloud_computing": [],
+      "qre_calculation_rules": {
+        "include_wages": true,
+        "include_supplies": true,
+        "include_cloud": false,
+        "include_contractors": true,
+        "contractor_eligibility_rate": 0.65,
+        "default_employee_qualification_basis": "Interview",
+        "allow_sampling_methodology": false,
+        "include_bonus_in_wages": false
+      },
+      "asc_calculation_inputs": {
+        "qre_prior_years_override": {
+          "enabled": false,
+          "year_minus_1_qre": 0,
+          "year_minus_2_qre": 0,
+          "year_minus_3_qre": 0
+        }
+      },
+      "business_flags": {
+        "is_startup": true,
+        "payroll_tax_offset_eligible": true,
+        "funded_by_third_party": false,
+        "funded_research_exists": false,
+        "wages_used_for_other_credits": false,
+        "prior_credit_claimed": false,
+        "prior_6765_years": [],
+        "prior_qre_amounts": {},
+        "section_174_filed": true
+      },
+      "output_preferences": {
+        "currency": "USD",
+        "format": "PDF",
+        "include_appendices": true,
+        "include_employee_detail_table": true,
+        "include_vendor_detail_table": true,
+        "include_project_narratives": true,
+        "include_four_part_test_table": true,
+        "include_form_6765_tie_out": true
+      },
+      "disclosures_and_assumptions": {
+        "methodology_summary": "Employee qualification percentages were determined through structured interviews with each team member and reviewed by the Director of Robotics Software Engineering. Contractor amounts are sourced from verified invoices. Supply amounts reflect actual purchase orders consumed in research activities.",
+        "limitations": [
+          "E005 Jordan Lee CEO qualified time is limited to direct technical supervision of active R&D programs only; general management excluded.",
+          "V001 RoboTest Solutions contract excludes any deliverables not directly related to ClearNav path planning hardware validation.",
+          "S002 LiDAR units are written off as consumed in the 72-hour stress test; replacement units purchased for production use are excluded."
+        ],
+        "disclaimer_text": "This R&D Tax Credit Study has been prepared by Occams Advisory for ClearPath Robotics Inc. for the tax year ended December 31, 2023. The study is based on information provided by company personnel and verified supporting documentation. The credit amounts presented are estimates subject to final review by qualified tax counsel. This document is privileged and confidential."
+      },
+      "golden_answer": "At ClearPath Robotics, every line of code we wrote in 2023 was solving a problem that had never been solved before at this price point \u2014 we were figuring out real-time path planning and low-light vision on the same chips that power a mid-range smartphone, and there was no textbook answer for whether it was even possible.",
+      "interview_metadata": {
+        "status": "complete",
+        "interviewer": "Occams Advisory \u2014 R&D Tax Credit Team",
+        "interview_date": "2024-02-15",
+        "notes": "Interview conducted with Dr. Sarah Okonkwo (Director of Engineering) and Jordan Lee (CEO). All project and employee data confirmed against company records."
+      },
+      "interview_responses": {
+        "QF1": "ClearPath builds autonomous mobile robots for warehouses. The technical complexity is in making them genuinely safe and reliable in unpredictable human environments \u2014 that requires fundamental research in real-time motion planning and computer vision that no off-the-shelf component can provide.",
+        "QF2": "At ClearPath Robotics, every line of code we wrote in 2023 was solving a problem that had never been solved before at this price point \u2014 we were figuring out real-time path planning and low-light vision on the same chips that power a mid-range smartphone, and there was no textbook answer for whether it was even possible."
+      },
+      "additional_documentation": [
+        "Form_1120_ClearPath_2023.pdf",
+        "Payroll_Report_ClearPath_2023.pdf",
+        "W2_All_Employees_2023.zip",
+        "Contractor_Invoices_2023.zip",
+        "Supply_PurchaseOrders_2023.zip",
+        "ClearBot200_Product_Spec_Sheet.pdf"
+      ]
+    },
+    {
+      "study_metadata": {
+        "prepared_for": {
+          "legal_name": "ClearPath Robotics Inc.",
+          "ein": "82-4716390",
+          "entity_type": "C-Corp",
+          "address": "1200 Innovation Drive, Austin, TX 78701",
+          "industry": "Industrial Robotics / Autonomous Systems",
+          "website": "https://clearpathrobotics.io",
+          "dba": null,
+          "state_of_incorporation": "TX",
+          "states_of_operation": [
+            "TX",
+            "CA",
+            "WA"
+          ]
+        },
+        "prepared_by": {
+          "firm_name": "Occams Advisory",
+          "preparer_name": "R&D Tax Credit Team",
+          "date_prepared": "2025-06-01"
+        },
+        "tax_year": {
+          "year_label": "2024",
+          "start_date": "2024-01-01",
+          "end_date": "2024-12-31"
+        },
+        "credit_method": "ASC",
+        "notes": "2024 study covers continued path planning enhancements and a new battery optimisation project."
+      },
+      "company_background": {
+        "business_overview": "ClearPath Robotics Inc. continued to grow its AMR platform in 2024, expanding from 12 to 47 deployed ClearBot-200 units across 4 enterprise warehouse clients. The engineering team grew to 24 FTEs and initiated a third major R&D program \u2014 battery state-of-charge optimisation \u2014 to address declining runtime performance in high-utilisation deployments. The company expanded R&D activities to include a battery management systems group.",
+        "products_and_services": [
+          "ClearBot-200: Autonomous mobile robot for pallet transport \u2014 now with fleet coordination for up to 50 simultaneous units",
+          "ClearPath Fleet Manager v2: Enhanced cloud-based fleet coordination with predictive maintenance alerts",
+          "ClearVision SDK v2: Updated computer vision toolkit supporting multi-camera stereo depth estimation",
+          "ClearNav Engine v2: Updated path planning firmware with multi-robot collision avoidance"
+        ],
+        "rd_departments": [
+          "Robotics Software Engineering \u2014 multi-robot coordination, collision avoidance, and fleet optimisation",
+          "Computer Vision Research \u2014 stereo depth estimation and semantic scene understanding",
+          "Embedded Systems Engineering \u2014 power management firmware and sensor fusion",
+          "Battery Systems Engineering (new in 2024) \u2014 SoC estimation and charge optimisation"
+        ],
+        "locations": [
+          "Austin, TX (HQ and primary R&D)",
+          "Seattle, WA (remote embedded team)"
+        ],
+        "org_structure_summary": "ClearPath expanded its engineering team to 24 FTEs in 2024, adding a Battery Systems Engineering group of 3 engineers. The company also hired two additional computer vision engineers to expand multi-camera capabilities."
+      },
+      "gross_receipts": {
+        "year_0": 9800000,
+        "year_minus_1": 4200000,
+        "year_minus_2": 2800000,
+        "year_minus_3": 1600000
+      },
+      "rd_projects": [
+        {
+          "project_id": "P001",
+          "project_name": "Multi-Robot Collision Avoidance and Fleet Coordination",
+          "business_component": "Distributed collision avoidance protocol enabling 50 simultaneous ClearBot-200 units to navigate shared warehouse space with guaranteed no-deadlock behaviour and throughput degradation under 8% at full fleet density.",
+          "start_date": "2024-01-08",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Extend the single-robot path planning engine to coordinate fleet-level motion for up to 50 simultaneous AMRs operating in shared warehouse space, with guaranteed deadlock freedom and sub-8% throughput degradation at maximum fleet density.",
+            "problem_statement": "Deploying more than 8 ClearBot-200 units in a single warehouse zone caused frequent deadlocks \u2014 two or more robots blocking each other indefinitely \u2014 requiring manual supervisor intervention every 12\u201320 minutes. The single-robot D* Lite engine had no awareness of other robot trajectories, and no published multi-robot coordination algorithm met both the 50ms replanning budget and the 50-robot scale simultaneously.",
+            "technical_uncertainty": "Whether a reservation-table based collision avoidance protocol (ORCA variant) could be integrated with the existing D* Lite replanning engine without exceeding the 50ms joint replanning budget when 50 robots simultaneously request new paths. The computational complexity of ORCA grows quadratically with fleet size, and it was unknown whether pruning strategies could linearise this sufficiently on the embedded controller.",
+            "hypotheses_tested": [
+              "Space-time A* with reservation tables would eliminate deadlocks but was expected to exceed 50ms at 50 robots \u2014 tested as baseline",
+              "ORCA (Optimal Reciprocal Collision Avoidance) with fleet-size pruning would scale sub-linearly in practice despite quadratic worst-case",
+              "Distributed token-passing with priority queues would prevent deadlock with lower coordination overhead than centralised ORCA"
+            ],
+            "experimentation_process": [
+              "Implemented Space-time A* with reservation tables: 100% deadlock-free but 340ms at 50 robots \u2014 7x over budget, rejected",
+              "Implemented ORCA with k-nearest-only constraint evaluation (k=8 neighbours): 47ms at 50 robots in simulation, 2.1% throughput degradation",
+              "Deployed ORCA k=8 on physical 12-robot fleet: deadlock-free across 200 hours, throughput degradation 6.8% \u2014 within spec",
+              "Scaling test to 30 robots in simulation: 49ms at 30 robots, 7.1% throughput \u2014 acceptable margin",
+              "Implemented distributed token-passing as alternative: eliminated deadlocks but introduced convoy behaviour \u2014 throughput degradation 18% at full density, rejected",
+              "Final validation: 50-robot simulation stress test over 72 hours \u2014 47ms P99 replanning, 7.4% throughput degradation, 0 deadlocks in 14,200 coordination events"
+            ],
+            "alternatives_considered": [
+              "Centralised path planner (all robots submit requests to single server): 80\u2013200ms coordination latency due to network round-trip, rejected",
+              "Velocity obstacle method: does not guarantee deadlock freedom in narrow aisle geometries",
+              "Token-passing protocol: deadlock-free but convoy behaviour caused 18% throughput loss \u2014 above 8% target"
+            ],
+            "results_or_outcome": "ORCA with k=8 nearest-neighbour pruning achieved 47ms P99 replanning latency at 30-robot density and 7.4% throughput degradation at 50 robots in simulation \u2014 meeting both specifications. Physical fleet validation with 12 robots confirmed 0 deadlocks across 200 hours of operation. Full 50-robot hardware validation pending facility access in Q1 2025.",
+            "failures_or_iterations": "ORCA with default k=all failed at 50 robots due to quadratic scaling. Token-passing was implemented fully but rejected due to convoy throughput penalty. Space-time A* reservation table approach was correct in theory but computationally intractable at scale."
+          },
+          "four_part_test": {
+            "permitted_purpose": "The project aimed to develop a new multi-robot coordination business component under IRC Sec. 41(d)(1), specifically a distributed collision avoidance protocol enabling deadlock-free 50-robot fleet operation. The work was directed at discovering information to eliminate uncertainty about whether ORCA with pruning strategies can operate within real-time replanning budgets at full fleet scale.",
+            "technological_in_nature": "Activities relied on computer science (multi-agent path planning, reservation-table algorithms, ORCA collision avoidance), distributed systems theory (token-passing coordination, priority queue scheduling), and embedded systems engineering (real-time constraint satisfaction on ARM Cortex-A72).",
+            "elimination_of_uncertainty": "At project inception, it was genuinely uncertain whether any known multi-robot collision avoidance algorithm could simultaneously satisfy the 50ms replanning budget and 50-robot scale on embedded hardware. Published ORCA implementations assumed powerful central servers; scaling to embedded deployment at this fleet size had not been documented. The team resolved uncertainty through systematic benchmarking of three candidate algorithms against measured latency distributions.",
+            "process_of_experimentation": "Three distinct algorithmic approaches were implemented and evaluated: Space-time A* with reservation tables, ORCA with k-nearest pruning, and distributed token-passing. Each was benchmarked on simulation environments with 8, 12, 30, and 50 robots, then validated on physical hardware for viable candidates. Rejection criteria were defined a priori \u2014 50ms budget and 8% throughput target \u2014 ensuring hypothesis-driven evaluation."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "MultiRobot_Coordination_Spec_v1_2024Q1.pdf",
+              "ORCA_Pruning_Algorithm_Design_2024Q2.pdf"
+            ],
+            "test_reports": [
+              "SpaceTimeAStar_Latency_Benchmark_2024Q1.pdf",
+              "ORCA_k8_Benchmark_50Robot_2024Q2.pdf",
+              "Physical_Fleet_12Robot_200Hr_Validation_2024Q3.pdf"
+            ],
+            "jira_links": [
+              "CPRBT-2001",
+              "CPRBT-2145",
+              "CPRBT-2301"
+            ],
+            "github_links": [
+              "clearpath/clearnav-engine",
+              "clearpath/fleet-coordinator"
+            ],
+            "deployment_logs": [
+              "Fleet_12Robot_AustinWH_Logs_2024Q3.csv"
+            ],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "Once we had more than 8 robots on the floor, they started deadlocking each other constantly. We had to figure out how to coordinate 50 robots without any of them getting stuck \u2014 that was completely unsolved for our hardware constraints.",
+            "QP2": "We tested three approaches. ORCA with nearest-neighbour pruning was the winner \u2014 it scaled well enough without the convoy problem that token-passing gave us.",
+            "QP3": "The big question was whether ORCA could work on our embedded chip at full fleet scale. The maths says it grows as O(n^2) \u2014 we needed to prove the pruning would keep it linear enough in practice."
+          }
+        },
+        {
+          "project_id": "P003",
+          "project_name": "Adaptive Battery State-of-Charge Estimation for Extended Runtime",
+          "business_component": "Embedded SoC estimation algorithm combining Coulomb counting with an Extended Kalman Filter (EKF) and an adaptive battery degradation model, achieving 2.1% SoC estimation error across 0\u2013100% range on LiFePO4 cells after 200 charge cycles.",
+          "start_date": "2024-02-01",
+          "end_date": null,
+          "status": "Ongoing",
+          "technical_summary": {
+            "objective": "Develop an accurate onboard battery state-of-charge (SoC) estimation algorithm for ClearBot-200 LiFePO4 battery packs that maintains 2% error across the full 0\u2013100% range after 200+ charge cycles, enabling precise runtime prediction and reducing unexpected robot shutdowns in high-utilisation deployments.",
+            "problem_statement": "ClearBot-200 units deployed in high-utilisation environments (3 shifts/day) showed increasing SoC estimation errors after 150+ charge cycles \u2014 coulomb counting drift accumulated to 15\u201322% error after 8 hours of operation, causing robots to shut down mid-task 30\u201345 minutes before predicted end-of-charge. The problem was traced to capacity fade not being modelled in the estimation algorithm.",
+            "technical_uncertainty": "Whether an Extended Kalman Filter integrating real-time capacity fade estimation could correct Coulomb counting drift sufficiently to achieve 2% SoC accuracy across the full charge range after 200 cycles, given that LiFePO4 OCV-SoC curves are nearly flat between 20\u201380% SoC \u2014 the range where Kalman filter observability is fundamentally limited.",
+            "hypotheses_tested": [
+              "EKF with capacity fade as a state variable would track long-term drift without requiring periodic full-discharge calibration",
+              "Dual EKF (separate filters for SoC and capacity fade) would outperform single-state EKF in the 20\u201380% flat OCV region",
+              "Pulse characterisation at rest could provide OCV-based anchor points to reset Coulomb counting drift during scheduled downtime"
+            ],
+            "experimentation_process": [
+              "Baseline Coulomb counting characterised: 2.1% error after 0 cycles, 15.8% error after 150 cycles \u2014 confirmed capacity fade as dominant error source",
+              "Implemented single-state EKF with capacity fade variable: 4.1% error after 150 cycles \u2014 improvement but above 2% target",
+              "Implemented Dual EKF (separate SoC and capacity fade filters): 2.8% error after 150 cycles, 3.4% after 200 cycles \u2014 below 4% but above target",
+              "Added OCV-anchor correction during robot docking (rest pulse at each charge event): error reduced to 2.3% after 200 cycles",
+              "Combined Dual EKF + OCV anchor: 2.1% error after 200 cycles across 6 test cells \u2014 met specification",
+              "Temperature compensation: 15\u00b0C vs 35\u00b0C testing showed 0.4% additional error at extremes \u2014 accepted within tolerance"
+            ],
+            "alternatives_considered": [
+              "Periodic full-discharge calibration: disruptive to operations, robot out of service for 4 hours; rejected",
+              "Neural network SoC estimator (LSTM): 1.8% error in simulation but requires 2GB RAM \u2014 50x above available onboard memory",
+              "Impedance spectroscopy for capacity tracking: requires dedicated hardware not present on ClearBot-200 PCB"
+            ],
+            "results_or_outcome": "Dual EKF with OCV-anchor correction achieved 2.1% SoC estimation error after 200 charge cycles across 6 LiFePO4 test cells. Unexpected shutdown incidents in pilot deployment dropped from 4.2 per robot per week to 0.3 per robot per week. Algorithm deployed to 12 production units in Q4 2024 firmware update.",
+            "failures_or_iterations": "Single-state EKF failed to meet the 2% target due to poor observability in the flat OCV region. The first OCV pulse characterisation implementation used a 30-second rest \u2014 insufficient for LiFePO4 equilibration; extended to 180 seconds in iteration 3. Temperature compensation model initially overcorrected at 35\u00b0C, introducing 0.8% additional error \u2014 coefficient recalibrated in iteration 4."
+          },
+          "four_part_test": {
+            "permitted_purpose": "The project aimed to develop a new battery management business component under IRC Sec. 41(d)(1) \u2014 an embedded SoC estimation algorithm combining Dual EKF with OCV-anchor correction for LiFePO4 cells. The work was directed at discovering whether EKF-based adaptive capacity fade estimation can achieve 2% SoC accuracy in the LiFePO4 flat OCV region after 200 charge cycles.",
+            "technological_in_nature": "Activities relied on control theory (Extended Kalman Filter, dual-filter architectures, state estimation), electrochemistry (LiFePO4 OCV-SoC characterisation, capacity fade mechanisms, impedance at rest), and embedded systems engineering (real-time firmware on ARM Cortex-A72, memory-constrained algorithm design).",
+            "elimination_of_uncertainty": "At project inception, it was genuinely uncertain whether an EKF integrating capacity fade could achieve 2% SoC accuracy in the problematic 20\u201380% flat OCV region of LiFePO4 cells, where Kalman filter observability is fundamentally limited by the near-zero OCV slope. No published work addressed this specific constraint combination for embedded industrial AMR applications. The team resolved uncertainty through systematic cell cycling experiments and iterative filter architecture refinements.",
+            "process_of_experimentation": "The team evaluated four algorithmic configurations: Coulomb counting baseline, single-state EKF, Dual EKF, and Dual EKF with OCV-anchor correction. Each was evaluated against a standardised cycling protocol on 6 LiFePO4 test cells across 0\u2013200 charge cycles, measuring SoC error at 10-cycle intervals. Rejection criteria (2% target) were defined a priori and applied consistently across all variants."
+          },
+          "evidence_links": {
+            "design_docs": [
+              "SoC_Estimation_Algorithm_Spec_2024Q1.pdf",
+              "DualEKF_Architecture_Design_2024Q2.pdf"
+            ],
+            "test_reports": [
+              "CoulombCounting_Baseline_Cycle_Report_2024Q1.pdf",
+              "SingleEKF_vs_DualEKF_Error_Comparison_2024Q2.pdf",
+              "OCV_Anchor_200Cycle_Validation_Report_2024Q3.pdf"
+            ],
+            "jira_links": [
+              "CPBATT-101",
+              "CPBATT-203",
+              "CPBATT-315"
+            ],
+            "github_links": [
+              "clearpath/clearbatt-firmware"
+            ],
+            "deployment_logs": [
+              "ClearBot200_BatteryFW_Q4_Deployment_Log.csv"
+            ],
+            "other_supporting_docs": []
+          },
+          "source_answers": {
+            "QP1": "Robots were shutting down mid-shift because the battery gauge was lying \u2014 it thought there was 30 minutes left but actually there was nothing. After 150 cycles the coulomb counter just drifts too far without correction.",
+            "QP2": "The hard part was the LiFePO4 flat voltage curve \u2014 the Kalman filter has almost no signal to work with in the 20\u201380% range. We had to add the OCV rest pulses at docking to give it an anchor point, and combine that with a separate filter tracking capacity fade.",
+            "QP3": "We hit the 2% target with the dual EKF plus OCV anchor combination. The first few approaches didn't get there \u2014 single EKF was still 4% error after 150 cycles."
+          }
+        }
+      ],
+      "employees": [
+        {
+          "employee_id": "E001",
+          "employee_name": "Dr. Sarah Okonkwo",
+          "job_title": "Director of Robotics Software Engineering",
+          "department": "Robotics Software Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 200000,
+          "qualified_percentage": 0.75,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_SarahOkonkwo_2024.pdf",
+          "rd_activities_description": "Dr. Okonkwo led the design of the multi-robot ORCA coordination protocol for P001. She authored the k-nearest pruning specification, reviewed all latency benchmark results, and directed the physical fleet validation protocol for the 12-robot deployment. She also provided technical oversight for the battery SoC project.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.65
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.1
+            }
+          ]
+        },
+        {
+          "employee_id": "E002",
+          "employee_name": "Marcus Rivera",
+          "job_title": "Senior Robotics Software Engineer",
+          "department": "Robotics Software Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 158000,
+          "qualified_percentage": 0.9,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_MarcusRivera_2024.pdf",
+          "rd_activities_description": "Rivera implemented the ORCA k=8 pruning variant and Space-time A* reservation table baseline for P001. He conducted all multi-robot simulation benchmarks at 8, 12, 30, and 50 robot densities, and designed the 72-hour simulation stress test protocol. He authored the physical fleet validation test plan and logged all coordination event data.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.9
+            }
+          ]
+        },
+        {
+          "employee_id": "E006",
+          "employee_name": "Dr. Priya Sharma",
+          "job_title": "Battery Systems Engineer",
+          "department": "Battery Systems Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 155000,
+          "qualified_percentage": 0.95,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_PriyaSharma_2024.pdf",
+          "rd_activities_description": "Dr. Sharma designed and implemented all SoC estimation algorithm variants for P003, including baseline Coulomb counting, single-state EKF, Dual EKF, and the OCV-anchor correction scheme. She conducted all LiFePO4 cell cycling experiments across 0\u2013200 charge cycles, designed the OCV rest pulse characterisation protocol, and performed temperature compensation calibration.",
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.95
+            }
+          ]
+        },
+        {
+          "employee_id": "E004",
+          "employee_name": "Tom Nguyen",
+          "job_title": "Embedded Systems Engineer",
+          "department": "Embedded Systems Engineering",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 140000,
+          "qualified_percentage": 0.8,
+          "qualification_basis": "Interview",
+          "activity_type": "direct_research",
+          "is_owner_officer": false,
+          "source_doc": "W2_TomNguyen_2024.pdf",
+          "rd_activities_description": "Nguyen ported the Dual EKF SoC estimation firmware to ARM Cortex-A72 production boards for P003, optimising memory usage for real-time execution within 512KB RAM. He also updated the ClearNav fleet coordination firmware for P001 multi-robot operation, implementing the ORCA k=8 module and the distributed token-passing protocol for comparative evaluation.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.4
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.4
+            }
+          ]
+        },
+        {
+          "employee_id": "E005",
+          "employee_name": "Jordan Lee",
+          "job_title": "CEO / Co-Founder",
+          "department": "Executive",
+          "location": "Austin, TX",
+          "w2_box_1_wages": 240000,
+          "qualified_percentage": 0.2,
+          "qualification_basis": "Interview",
+          "activity_type": "supervision",
+          "is_owner_officer": true,
+          "owner_officer_detail": "Lee's qualified time is limited to direct technical supervision of active R&D programs only \u2014 architecture reviews and prototype evaluation. General management, board meetings, investor relations, and sales activities are excluded.",
+          "source_doc": "W2_JordanLee_2024.pdf",
+          "rd_activities_description": "Lee provided technical oversight for both 2024 R&D programs, conducting bi-weekly architecture reviews for P001 fleet coordination and monthly evaluation sessions for P003 battery firmware. All business development and management activities are excluded from qualified time.",
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_employee_time": 0.6
+            },
+            {
+              "project_id": "P003",
+              "percent_of_employee_time": 0.4
+            }
+          ]
+        }
+      ],
+      "contractors": [
+        {
+          "vendor_id": "V003",
+          "vendor_name": "FleetSim Technologies Inc.",
+          "description_of_work": "Multi-robot simulation environment development and 50-robot density stress testing for P001 ORCA coordination protocol. Delivered 500 parametrised warehouse floor plan scenarios and automated latency reporting suite.",
+          "total_amount_paid": 45000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. FST-2024-02"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_FleetSim_FST-2024-02.pdf",
+            "INV-FST-2024-Q1.pdf"
+          ]
+        },
+        {
+          "vendor_id": "V004",
+          "vendor_name": "BatteryCycle Labs LLC",
+          "description_of_work": "Independent LiFePO4 cell cycling validation for P003: 200-cycle aging protocol on 6 test cells, OCV characterisation at 5 temperature points, and SoC error measurement using reference coulombmeter.",
+          "total_amount_paid": 28000,
+          "qualified_percentage": 1.0,
+          "us_based": true,
+          "is_funded": false,
+          "contract_research_65_percent_rule_applies": true,
+          "rights_and_risk": {
+            "company_retains_rights": true,
+            "company_bears_financial_risk": true,
+            "supporting_contract_reference": "Master Services Agreement No. BCL-2024-04"
+          },
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_vendor_work": 1.0
+            }
+          ],
+          "source_docs": [
+            "SOW_BatteryCycleLabs_BCL-2024-04.pdf",
+            "INV-BCL-2024-Q2.pdf"
+          ]
+        }
+      ],
+      "supplies": [
+        {
+          "supply_id": "S003",
+          "description": "LiFePO4 prismatic test cells (24 units, 100Ah) consumed in P003 200-cycle aging and OCV characterisation experiments \u2014 cells degraded beyond reuse threshold and written off",
+          "vendor": "CATL / Battery World USA",
+          "invoice_reference": "INV-BWU-2024-0218",
+          "amount": 9600,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "INV-BWU-2024-0218.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P003",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        },
+        {
+          "supply_id": "S004",
+          "description": "Simulation compute credits (AWS EC2 c6i.4xlarge, 1,200 hours) for P001 multi-robot ORCA stress testing \u2014 50-robot simulation at 20Hz LiDAR tick rate requires dedicated compute not available on ClearPath office hardware",
+          "vendor": "Amazon Web Services",
+          "invoice_reference": "AWS-INV-2024-CP-Q2",
+          "amount": 5400,
+          "qualified_percentage": 1.0,
+          "consumed_in_research": true,
+          "source_docs": [
+            "AWS-INV-2024-CP-Q2.pdf"
+          ],
+          "project_allocation": [
+            {
+              "project_id": "P001",
+              "percent_of_supply_usage": 1.0
+            }
+          ]
+        }
+      ],
+      "cloud_computing": [],
+      "qre_calculation_rules": {
+        "include_wages": true,
+        "include_supplies": true,
+        "include_cloud": false,
+        "include_contractors": true,
+        "contractor_eligibility_rate": 0.65,
+        "default_employee_qualification_basis": "Interview",
+        "allow_sampling_methodology": false,
+        "include_bonus_in_wages": false
+      },
+      "asc_calculation_inputs": {
+        "qre_prior_years_override": {
+          "enabled": false,
+          "year_minus_1_qre": 0,
+          "year_minus_2_qre": 0,
+          "year_minus_3_qre": 0
+        }
+      },
+      "business_flags": {
+        "is_startup": true,
+        "payroll_tax_offset_eligible": true,
+        "funded_by_third_party": false,
+        "funded_research_exists": false,
+        "wages_used_for_other_credits": false,
+        "prior_credit_claimed": false,
+        "prior_6765_years": [],
+        "prior_qre_amounts": {},
+        "section_174_filed": true
+      },
+      "output_preferences": {
+        "currency": "USD",
+        "format": "PDF",
+        "include_appendices": true,
+        "include_employee_detail_table": true,
+        "include_vendor_detail_table": true,
+        "include_project_narratives": true,
+        "include_four_part_test_table": true,
+        "include_form_6765_tie_out": true
+      },
+      "disclosures_and_assumptions": {
+        "methodology_summary": "Employee qualification percentages were determined through structured interviews and reviewed by the Director of Robotics Software Engineering. Contractor amounts are sourced from verified invoices. Supply amounts reflect actual purchase orders consumed in research activities.",
+        "limitations": [
+          "E005 Jordan Lee CEO qualified time is limited to direct technical supervision of active R&D programs only; general management and investor relations excluded.",
+          "S004 AWS compute credits reflect only hours directly consumed in P001 multi-robot simulation experiments; general infrastructure costs excluded.",
+          "P001 50-robot physical hardware validation was not completed in 2024; simulation validation results are used for qualification purposes."
+        ],
+        "disclaimer_text": "This R&D Tax Credit Study has been prepared by Occams Advisory for ClearPath Robotics Inc. for the tax year ended December 31, 2024. The study is based on information provided by company personnel and verified supporting documentation. The credit amounts presented are estimates subject to final review by qualified tax counsel. This document is privileged and confidential."
+      },
+      "golden_answer": "In 2024 we had to figure out how to stop 50 robots from deadlocking each other in a shared space \u2014 that sounds like a logistics problem but it is actually a distributed computing problem no one had solved at this hardware cost. And on the battery side, we were fighting the physics of LiFePO4 itself \u2014 the flat voltage curve makes it genuinely hard to know where you are in the charge cycle.",
+      "interview_metadata": {
+        "status": "complete",
+        "interviewer": "Occams Advisory \u2014 R&D Tax Credit Team",
+        "interview_date": "2025-02-20",
+        "notes": "Interview conducted with Dr. Sarah Okonkwo (Director of Engineering), Dr. Priya Sharma (Battery Systems Engineer), and Jordan Lee (CEO). All project and employee data confirmed against company records."
+      },
+      "interview_responses": {
+        "QF1": "ClearPath builds autonomous warehouse robots. The complexity is in making a fleet of 50 robots share space safely and efficiently \u2014 that is a hard distributed coordination problem at our hardware cost level. In 2024 we also started solving battery state estimation for high-cycle industrial use cases.",
+        "QF2": "In 2024 we had to figure out how to stop 50 robots from deadlocking each other in a shared space \u2014 that sounds like a logistics problem but it is actually a distributed computing problem no one had solved at this hardware cost. And on the battery side, we were fighting the physics of LiFePO4 itself \u2014 the flat voltage curve makes it genuinely hard to know where you are in the charge cycle."
+      },
+      "additional_documentation": [
+        "Form_1120_ClearPath_2024.pdf",
+        "Payroll_Report_ClearPath_2024.pdf",
+        "W2_All_Employees_2024.zip",
+        "Contractor_Invoices_2024.zip",
+        "Supply_PurchaseOrders_2024.zip",
+        "ClearBot200_v2_Product_Spec_Sheet.pdf"
+      ]
+    }
+  ]
+}

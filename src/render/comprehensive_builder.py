@@ -21,6 +21,9 @@ from src.render.comprehensive_sections import (
     create_documentation_index,
     create_assumptions_section,
     create_multi_year_summary_section,
+    create_audit_compliance_section,
+    create_research_methodology_section,
+    create_correction_summary_section,
 )
 
 
@@ -60,6 +63,9 @@ def build_multi_year_pdf(
 
     story = []
 
+    # Carry the top-level multi-year dict for correction summary access
+    multi_year_raw = context.get("_multi_year_raw") or {}
+
     # 0. Title Page (using most-recent year data)
     story.extend(create_title_page(latest_study_data))
 
@@ -67,6 +73,9 @@ def build_multi_year_pdf(
     story.extend(
         create_multi_year_summary_section(multi_year_qre_results, study_title=study_title)
     )
+
+    # Correction / Compliance Log (study-level) — shown before executive summary
+    story.extend(create_correction_summary_section(multi_year_raw))
 
     # 1. Executive Summary — with combined multi-year totals in the summary table
     combined_total_qre = sum(
@@ -144,6 +153,26 @@ def build_multi_year_pdf(
     # 9. Assumptions & Disclosures (most-recent year)
     story.extend(create_assumptions_section(latest_study_data))
 
+    # 12. Audit Compliance Overview (new — per year, using each year's enriched data)
+    for yr_data in multi_year_study_data:
+        yr_label = yr_data["study_metadata"]["tax_year"]["year_label"]
+        elems = create_audit_compliance_section(yr_data)
+        if elems:
+            from reportlab.platypus import Paragraph
+            from src.render.comprehensive_sections import h1_style
+            story.append(Paragraph(f"Tax Year {yr_label} — Audit Compliance Overview", h1_style))
+            story.extend(elems)
+
+    # 13. Research Methodology & Compliance Analysis (new — per year)
+    for yr_data in multi_year_study_data:
+        yr_label = yr_data["study_metadata"]["tax_year"]["year_label"]
+        elems = create_research_methodology_section(yr_data)
+        if elems:
+            from reportlab.platypus import Paragraph
+            from src.render.comprehensive_sections import h1_style
+            story.append(Paragraph(f"Tax Year {yr_label} — Research Methodology", h1_style))
+            story.extend(elems)
+
     doc.build(
         story,
         canvasmaker=lambda *args, **kwargs: NumberedCanvas(
@@ -207,7 +236,13 @@ def build_comprehensive_pdf(study_data: dict, context: dict, output_path: Path, 
     
     # 9. Assumptions & Disclosures
     story.extend(create_assumptions_section(study_data))
-    
+
+    # 12. Audit Compliance Overview (enriched JSON)
+    story.extend(create_audit_compliance_section(study_data))
+
+    # 13. Research Methodology & Compliance Analysis (enriched JSON)
+    story.extend(create_research_methodology_section(study_data))
+
     # Build
     doc.build(
         story,

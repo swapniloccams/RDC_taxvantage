@@ -1,6 +1,7 @@
 """Narrative Agent - generates executive summary and project narratives using OpenAI."""
 
 import os
+import time
 import json
 from openai import OpenAI
 from src.schema import ReportData, Project
@@ -8,6 +9,60 @@ from src.agents.framework import Agent, Handoff
 
 
 PLACEHOLDER_TEXT = "[Needs analyst input - insufficient data provided]"
+
+# Default model — uses gpt-4o (non-deprecated, latest capable model).
+# Override via OPENAI_MODEL env var.
+_DEFAULT_MODEL = "gpt-4o"
+
+
+def _openai_call_with_retry(client: OpenAI, model: str, messages: list, temperature: float = 0.3) -> str:
+    """
+    Call OpenAI chat completions with exponential-backoff retry on rate-limit (429)
+    and transient server errors (500/502/503).  Raises after 4 attempts.
+    """
+    delays = [2, 5, 15, 30]
+    last_exc = None
+    for attempt, delay in enumerate(delays, 1):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as exc:
+            err = str(exc)
+            is_retryable = any(code in err for code in ("429", "500", "502", "503", "timeout", "Timeout"))
+            if is_retryable and attempt < len(delays):
+                last_exc = exc
+                time.sleep(delay)
+                continue
+            raise
+    raise last_exc
+
+
+def _all_project_year_slots(context: dict) -> list:
+    """
+    Return a flat list of (year_label, yr_data_ref, proj_ref) for every project
+    in every year, ordered oldest-year-first.
+
+    Using yr_data_ref and proj_ref as live dict references means any mutation
+    (e.g. writing generated_narratives) propagates back into context automatically.
+    """
+    slots = []
+    multi_year_data = context.get("multi_year_study_data") or []
+    if multi_year_data:
+        for yr_data in multi_year_data:
+            yr_label = yr_data["study_metadata"]["tax_year"]["year_label"]
+            for proj in yr_data.get("rd_projects", []):
+                slots.append((yr_label, yr_data, proj))
+    else:
+        # Single-year path: fall back to study_data
+        study = context.get("study_data", {})
+        yr_label = study.get("study_metadata", {}).get("tax_year", {}).get("year_label", "N/A")
+        for proj in study.get("rd_projects", []):
+            slots.append((yr_label, study, proj))
+    return slots
 
 
 def generate_executive_summary_tool(report_data_json: str = None, context: dict = None) -> str:
@@ -26,7 +81,7 @@ def generate_executive_summary_tool(report_data_json: str = None, context: dict 
         Generated executive summary text
     """
     oai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+    model = os.getenv("OPENAI_MODEL", _DEFAULT_MODEL)
 
     # ── Comprehensive / questionnaire path ──────────────────────────────────
     if context and "study_data" in context:
@@ -37,11 +92,17 @@ def generate_executive_summary_tool(report_data_json: str = None, context: dict 
         total_qre = str(context.get("total_qre", "N/A"))
         federal_credit = str(context.get("asc_computation", {}).get("federal_credit", "N/A"))
 
+        # Gather all unique projects across all years for a complete summary
+        all_slots = _all_project_year_slots(context)
+        seen_proj_ids: set = set()
         project_lines = []
-        for p in study.get("rd_projects", []):
+        for _, _, p in all_slots:
+            pid = p.get("project_id", "")
+            if pid in seen_proj_ids:
+                continue
+            seen_proj_ids.add(pid)
             ts = p.get("technical_summary", {})
             obj = ts.get("objective", "")
-            # Include LLM-generated description if available for richer summary
             gen = p.get("generated_narratives") or {}
             desc = gen.get("project_description") or obj
             project_lines.append(
@@ -86,12 +147,9 @@ Paragraph 3: State the total QREs of {total_qre} and federal R&D credit of {fede
 
 CRITICAL: Only use the facts listed above. Do not invent technical details. Do not use hedging language."""
 
-        response = oai_client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+        summary = _openai_call_with_retry(
+            oai_client, model, [{"role": "user", "content": prompt}]
         )
-        summary = response.choices[0].message.content.strip()
         context["study_data"]["executive_summary"] = summary
         return summary
 
@@ -127,12 +185,9 @@ Write a professional executive summary that:
 
 Do not invent specific technical details not provided."""
 
-    response = oai_client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+    summary = _openai_call_with_retry(
+        oai_client, model, [{"role": "user", "content": prompt}]
     )
-    summary = response.choices[0].message.content.strip()
 
     if context and "report_data" in context:
         context["report_data"]["executive_summary"] = summary
@@ -140,39 +195,56 @@ Do not invent specific technical details not provided."""
     return summary
 
 
-def generate_project_narratives_tool(project_index: int = 0, context: dict = None) -> dict:
+def generate_project_narratives_tool(context: dict = None) -> dict:
     """
-    Tool: Generate all narrative sections for a single project.
+    Tool: Generate all narrative sections for the NEXT pending project-year slot.
+
+    Call this tool repeatedly (with no arguments) until you receive
+    "status": "all_complete".  The tool tracks its own position internally via
+    context["_project_narrative_slot"] — you MUST NOT pass any index argument.
 
     Supports two context paths:
-    - Questionnaire / comprehensive: context["study_data"] (RDStudyData format)
-      Reads from rd_projects[].technical_summary, four_part_test, source_answers.
-      Writes generated text into rd_projects[].generated_narratives.
+    - Comprehensive / multi-year: uses _all_project_year_slots() for full coverage.
+      Iterates oldest-year-first, covering every project in every year.
     - Legacy CSV: context["report_data"] (ReportData format)
 
-    Args:
-        project_index: Index of project to generate narratives for
-        context: Shared context dictionary
-
     Returns:
-        Dictionary with status and narratives_generated count
+        Dictionary with status, project_name, year_label, narratives_generated,
+        completed_count, and total_count.  When status == "all_complete" all
+        project-year narratives have been written and you should proceed to
+        generate_employee_activity_narrative_tool.
     """
     oai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+    model = os.getenv("OPENAI_MODEL", _DEFAULT_MODEL)
 
     # ── Comprehensive / questionnaire path ──────────────────────────────────
     if context and "study_data" in context:
-        rd_projects = context["study_data"].get("rd_projects", [])
-        if project_index >= len(rd_projects):
-            return {"error": f"Invalid project index {project_index} — only {len(rd_projects)} project(s) loaded"}
+        all_slots = _all_project_year_slots(context)
+        total_slots = len(all_slots)
 
-        proj = rd_projects[project_index]
+        # Auto-advancing internal slot counter
+        project_index = context.get("_project_narrative_slot", 0)
+
+        if project_index >= total_slots:
+            context["_project_narrative_slot"] = total_slots
+            return {
+                "status": "all_complete",
+                "message": (
+                    f"All {total_slots} project-year narrative(s) already generated. "
+                    "Proceed to generate_employee_activity_narrative_tool."
+                ),
+                "completed_count": total_slots,
+                "total_count": total_slots,
+            }
+
+        year_label, yr_data, proj = all_slots[project_index]
         ts = proj.get("technical_summary", {})
         fpt = proj.get("four_part_test", {})
         source_answers: dict = proj.get("source_answers") or {}
         project_name = proj.get("project_name", f"Project {project_index + 1}")
 
         narratives = {}
+        year_ctx = f"Tax Year {year_label} — "
 
         # ii) Project Description
         desc_facts = [f for f in [ts.get("objective"), ts.get("problem_statement"),
@@ -181,7 +253,7 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
             oai_client, model,
             "Project Description",
             desc_facts,
-            f"Describe the R&D project '{project_name}'. Write 1-2 paragraphs explaining "
+            f"Describe the R&D project '{project_name}' for {year_ctx}. Write 1-2 paragraphs explaining "
             "what the project aimed to achieve and the technical work involved.",
             source_answers=source_answers,
         ) if desc_facts else PLACEHOLDER_TEXT
@@ -194,8 +266,8 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
             oai_client, model,
             "New or Improved Business Component",
             comp_facts,
-            "Describe the new or improved business component that resulted from this R&D project. "
-            "Focus on what was created or enhanced. Write 1 paragraph.",
+            f"Describe the new or improved business component that resulted from this R&D project "
+            f"({year_ctx}). Focus on what was created or enhanced. Write 1 paragraph.",
             source_answers=source_answers,
         ) if comp_facts else PLACEHOLDER_TEXT
 
@@ -207,8 +279,8 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
             oai_client, model,
             "Elimination of Uncertainty",
             unc_facts,
-            "Describe the technical uncertainties that existed at project inception and how the "
-            "team worked to resolve them. Write 1-2 paragraphs.",
+            f"Describe the technical uncertainties that existed at project inception ({year_ctx}) and how "
+            "the team worked to resolve them. Write 1-2 paragraphs.",
             source_answers=source_answers,
         ) if unc_facts else PLACEHOLDER_TEXT
 
@@ -220,8 +292,8 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
             oai_client, model,
             "Process of Experimentation",
             exp_facts,
-            "Describe the systematic process of experimentation: iterations, testing, and refinements. "
-            "Write 1-2 paragraphs.",
+            f"Describe the systematic process of experimentation ({year_ctx}): iterations, testing, "
+            "and refinements. Write 1-2 paragraphs.",
             source_answers=source_answers,
         ) if exp_facts else PLACEHOLDER_TEXT
 
@@ -247,19 +319,48 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
             oai_client, model,
             "Resolution",
             res_facts,
-            f"Describe how and when the technical uncertainty in project '{project_name}' was resolved. "
+            f"Describe how and when the technical uncertainty in project '{project_name}' "
+            f"({year_ctx}) was resolved. "
             "Include what the team ultimately learned, the final outcome, and any remaining open questions. "
             "Write 1 paragraph. Reference specific results, experiments, or milestones where available.",
             source_answers=source_answers,
         ) if res_facts else PLACEHOLDER_TEXT
 
-        # Store generated narratives back into study_data for renderer and compliance
-        context["study_data"]["rd_projects"][project_index]["generated_narratives"] = narratives
+        # ── Write narratives back to the correct year's project dict (Gap 4 fix) ──────
+        # proj is a live reference into yr_data["rd_projects"] which is itself a live
+        # reference into context["multi_year_study_data"][n] AND into
+        # context["study_data"] when this is the last year.  Mutating proj propagates
+        # the narrative to all consumers automatically — no secondary copy needed.
+        proj["generated_narratives"] = narratives
 
+        # Additionally mirror into context["study_data"] projects for the combined-report
+        # renderer (comprehensive_sections.py reads from study_data["rd_projects"][i]).
+        for sd_proj in context.get("study_data", {}).get("rd_projects", []):
+            yr_lbl = year_label  # noqa: captured above
+            if sd_proj.get("project_id") == proj.get("project_id"):
+                # Overwrite only if this is a later (or equal) year, so the last-year
+                # version wins for the combined report.
+                sd_proj["generated_narratives"] = narratives
+                break
+
+        # Advance the internal counter for the next call
+        context["_project_narrative_slot"] = project_index + 1
+        remaining = total_slots - project_index - 1
+        status = "all_complete" if remaining == 0 else "success"
+        msg = (
+            "All project-year narratives generated. Call generate_employee_activity_narrative_tool next."
+            if remaining == 0
+            else f"Call generate_project_narratives_tool() again to process the next slot."
+        )
         return {
-            "status": "success",
+            "status": status,
             "project_name": project_name,
+            "year_label": year_label,
             "narratives_generated": len(narratives),
+            "completed_count": project_index + 1,
+            "total_count": total_slots,
+            "remaining_count": remaining,
+            "message": msg,
         }
 
     # ── Legacy path ─────────────────────────────────────────────────────────
@@ -267,9 +368,16 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
         return {"error": "No report data in context"}
 
     report_data = ReportData(**context["report_data"])
-
-    if project_index >= len(report_data.projects):
-        return {"error": f"Invalid project index: {project_index}"}
+    project_index = context.get("_project_narrative_slot", 0)
+    total_legacy = len(report_data.projects)
+    if project_index >= total_legacy:
+        context["_project_narrative_slot"] = total_legacy
+        return {
+            "status": "all_complete",
+            "message": f"All {total_legacy} legacy project narratives generated.",
+            "completed_count": total_legacy,
+            "total_count": total_legacy,
+        }
 
     project = report_data.projects[project_index]
     facts = project.project_facts
@@ -335,10 +443,19 @@ def generate_project_narratives_tool(project_index: int = 0, context: dict = Non
     for key, value in narratives.items():
         context["report_data"]["projects"][project_index][key] = value
 
+    context["_project_narrative_slot"] = project_index + 1
+    remaining = total_legacy - project_index - 1
     return {
-        "status": "success",
+        "status": "all_complete" if remaining == 0 else "success",
         "project_name": project.project_name,
         "narratives_generated": len(narratives),
+        "completed_count": project_index + 1,
+        "total_count": total_legacy,
+        "remaining_count": remaining,
+        "message": (
+            "All project narratives generated." if remaining == 0
+            else "Call generate_project_narratives_tool() again for the next project."
+        ),
     }
 
 
@@ -376,39 +493,62 @@ CRITICAL RULES:
   a complete section. Write the best narrative you can from the available data.
 - Do not use hedging language such as "may", "could", "possibly", or "might"."""
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
+    return _openai_call_with_retry(
+        client, model, [{"role": "user", "content": prompt}]
     )
 
-    return response.choices[0].message.content.strip()
 
-
-def generate_employee_activity_narrative_tool(employee_index: int = 0, context: dict = None) -> dict:
+def generate_employee_activity_narrative_tool(context: dict = None) -> dict:
     """
-    Tool: Generate a 2-3 sentence activity narrative for a single employee.
+    Tool: Generate a 2-3 sentence activity narrative for the NEXT pending employee.
 
-    Uses D1 (rd_activities_description), D2 (activity_type), D4 (owner_officer_detail)
-    plus the employee's source_answers to write the §6 narrative paragraph per the blueprint.
+    Call this tool repeatedly (with no arguments) until you receive
+    "status": "all_complete".  The tool tracks its own position internally via
+    context["_employee_narrative_slot"] — you MUST NOT pass any index argument.
 
-    Args:
-        employee_index: Index of employee to generate narrative for
-        context: Shared context dictionary
+    Covers ALL unique employees across ALL years (not just the final year) so
+    employees who only appear in earlier years still receive LLM narratives.
 
     Returns:
-        dict with status and narrative text
+        dict with status, employee_name, completed_count, total_count.
+        When status == "all_complete" call generate_executive_summary_tool.
     """
     if not context or "study_data" not in context:
         return {"error": "No study_data in context"}
 
-    employees = context["study_data"].get("employees", [])
-    if employee_index >= len(employees):
-        return {"error": f"Invalid employee index {employee_index} — only {len(employees)} employee(s) loaded"}
+    # Build a deduplicated ordered list of all employees across all years.
+    all_employees_by_id: dict = {}
+    multi_year_data = context.get("multi_year_study_data") or []
+    for yr_data in multi_year_data:
+        for e in yr_data.get("employees", []):
+            eid = e.get("employee_id") or e.get("employee_name", "")
+            if eid not in all_employees_by_id:
+                all_employees_by_id[eid] = e
+    if not all_employees_by_id:
+        for e in context["study_data"].get("employees", []):
+            eid = e.get("employee_id") or e.get("employee_name", "")
+            if eid not in all_employees_by_id:
+                all_employees_by_id[eid] = e
+
+    employees = list(all_employees_by_id.values())
+    total_employees = len(employees)
+
+    employee_index = context.get("_employee_narrative_slot", 0)
+    if employee_index >= total_employees:
+        context["_employee_narrative_slot"] = total_employees
+        return {
+            "status": "all_complete",
+            "message": (
+                f"All {total_employees} employee narrative(s) already generated. "
+                "Call generate_executive_summary_tool next."
+            ),
+            "completed_count": total_employees,
+            "total_count": total_employees,
+        }
 
     emp = employees[employee_index]
     oai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    model = os.getenv("OPENAI_MODEL", "gpt-4-turbo-preview")
+    model = os.getenv("OPENAI_MODEL", _DEFAULT_MODEL)
 
     name = emp.get("employee_name", f"Employee {employee_index + 1}")
     title = emp.get("job_title", "")
@@ -452,20 +592,38 @@ Requirements:
 - Do NOT invent technical details not present in the input.
 - If insufficient data, write: "Analyst input required: [what is missing]"
 """
-        response = oai_client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+        narrative = _openai_call_with_retry(
+            oai_client, model, [{"role": "user", "content": prompt}]
         )
-        narrative = response.choices[0].message.content.strip()
 
-    # Store in study_data for renderer
-    context["study_data"]["employees"][employee_index]["generated_activity_narrative"] = narrative
+    # Write the narrative back into every year that contains this employee.
+    emp_id = emp.get("employee_id") or emp.get("employee_name", "")
+    for yr_data in context.get("multi_year_study_data") or []:
+        for yr_emp in yr_data.get("employees", []):
+            yr_eid = yr_emp.get("employee_id") or yr_emp.get("employee_name", "")
+            if yr_eid == emp_id:
+                yr_emp["generated_activity_narrative"] = narrative
+    for sd_emp in context.get("study_data", {}).get("employees", []):
+        sd_eid = sd_emp.get("employee_id") or sd_emp.get("employee_name", "")
+        if sd_eid == emp_id:
+            sd_emp["generated_activity_narrative"] = narrative
 
+    # Advance the internal counter
+    context["_employee_narrative_slot"] = employee_index + 1
+    remaining = total_employees - employee_index - 1
+    status = "all_complete" if remaining == 0 else "success"
+    msg = (
+        "All employee narratives generated. Call generate_executive_summary_tool next."
+        if remaining == 0
+        else "Call generate_employee_activity_narrative_tool() again for the next employee."
+    )
     return {
-        "status": "success",
+        "status": status,
         "employee_name": name,
-        "narrative": narrative,
+        "completed_count": employee_index + 1,
+        "total_count": total_employees,
+        "remaining_count": remaining,
+        "message": msg,
     }
 
 
@@ -526,26 +684,45 @@ For each project, use these exact headings:
    vi)  Technological in Nature       ← use four_part_test.technological_in_nature + source_answers
 
 === FIRST-TIME GENERATION (follow EXACTLY — this order is mandatory) ===
-1. Call generate_project_narratives_tool(project_index=0) for first project
-2. Call generate_project_narratives_tool(project_index=N) for each subsequent project
-3. Call generate_employee_activity_narrative_tool(employee_index=0) for first employee
-4. Call generate_employee_activity_narrative_tool(employee_index=N) for each subsequent employee
-5. Call generate_executive_summary_tool() — LAST, after all project and employee narratives are complete
+
+IMPORTANT: generate_project_narratives_tool and generate_employee_activity_narrative_tool
+are STATEFUL — they track their own position internally. Call them with NO arguments.
+Do NOT pass any index or other parameters.
+
+1. Call generate_project_narratives_tool() — NO arguments.
+   Check the returned "status":
+   - "success": call generate_project_narratives_tool() again (no args) for the next slot.
+   - "all_complete": ALL project-year narratives are done. Move to step 3.
+   Repeat until status == "all_complete". This covers ALL projects in ALL years.
+
+2. (Do NOT call anything between steps 1 and 3.)
+
+3. Call generate_employee_activity_narrative_tool() — NO arguments.
+   Check the returned "status":
+   - "success": call generate_employee_activity_narrative_tool() again (no args).
+   - "all_complete": ALL employee narratives are done. Move to step 5.
+   Repeat until status == "all_complete".
+
+4. (Do NOT call anything between steps 3 and 5.)
+
+5. Call generate_executive_summary_tool() — LAST, after all project and employee narratives.
 6. Call handoff_to_compliance()
 
 CRITICAL ORDER RULE: Executive summary MUST be generated LAST — it synthesizes all completed
 project narratives and employee descriptions. Calling it first produces an incomplete summary.
+CRITICAL: Never pass index arguments to generate_project_narratives_tool or
+generate_employee_activity_narrative_tool — they are fully self-advancing.
 
 === REVISION MODE — when sent back from ComplianceAgent due to compliance failures ===
 You have been returned here because the ComplianceAgent found ERROR-level issues in the narratives.
 DO NOT output chat text. DO NOT call handoff_to_compliance immediately.
 You MUST fix the issues using tool calls first:
 
-1. For EVERY project that has a compliance ERROR, call generate_project_narratives_tool(project_index=N)
-   again to regenerate all 6 narratives for that project with the full structured data now available.
-2. For EVERY employee that has a compliance ERROR or "Analyst input required" text, call
-   generate_employee_activity_narrative_tool(employee_index=N) again.
-3. After all affected projects and employees are regenerated, call generate_executive_summary_tool()
+1. Reset the counters by calling generate_project_narratives_tool() with no args.
+   Keep calling it (no args) until status == "all_complete" to regenerate ALL project narratives.
+2. Call generate_employee_activity_narrative_tool() with no args.
+   Keep calling it until status == "all_complete" to regenerate ALL employee narratives.
+3. Then call generate_executive_summary_tool()
 4. Then call handoff_to_compliance()
 
 CRITICAL: In revision mode, you MUST call the generate_* tools — outputting text without tool calls

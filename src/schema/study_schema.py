@@ -172,6 +172,34 @@ class RDProject(BaseModel):
         default_factory=dict,
         description="Raw questionnaire answers that produced this project's fields, keyed by question_id"
     )
+    # ── Refined / audit-defence fields ──────────────────────────────────────
+    cross_year_business_component_id: Optional[str] = Field(
+        None, description="Stable BC identifier shared across multi-year QRAs for the same business component")
+    cross_year_note: Optional[str] = Field(
+        None, description="Human-readable note linking this QRA to adjacent-year QRAs for the same BC")
+    is_commercial_sale_software: Optional[bool] = Field(
+        None, description="True → sold/licensed externally; exempt from IUS high-threshold test")
+    internal_use_software_exemption_note: Optional[str] = None
+    business_component_classification: Optional[str] = Field(
+        None, description="e.g. computer_software_commercial_sale, process, product")
+    irc_section_references: List[str] = Field(
+        default_factory=list, description="IRC/Treas. Reg. citations applicable to this project")
+    qra_year: Optional[int] = Field(None, description="Tax year of this qualified research activity")
+    project_qre_summary: Optional[Dict] = Field(
+        None,
+        alias="qre_summary",
+        description="Project-level QRE breakdown: wage_qre, contractor_qre_after_65pct, supply_qre, cloud_qre, total_project_qre",
+    )
+    credit_attribution: Optional[Dict] = Field(
+        None, description="attribution_pct, proportional_credit, basis — proportional share of year credit for this project")
+    uncertainty_resolution_date: Optional[str] = Field(
+        None, description="Quarter/date when the primary technical uncertainty was resolved e.g. '2022-Q4'")
+    prior_art_search_summary: Optional[str] = Field(
+        None, description="Summary of prior-art / literature review performed before project initiation")
+    excluded_activities_within_project: Optional[str] = Field(
+        None, description="Formal description of non-qualifying activities excluded from all allocations within this project")
+
+    model_config = {"populate_by_name": True}
 
 
 # ============================================================================
@@ -247,6 +275,20 @@ class Employee(BaseModel):
         default_factory=dict,
         description="Raw questionnaire answers for this employee keyed by question_id"
     )
+    # ── Refined / audit-defence fields ──────────────────────────────────────
+    qualification_narrative: Optional[str] = Field(
+        None, description="Full legal qualification narrative — why this employee's work satisfies IRC §41 direct-research / supervision prongs")
+    time_tracking_method: Optional[str] = Field(
+        None, description="How the qualified percentage was substantiated (interview, Jira, timesheet, etc.)")
+    excluded_time_description: Optional[str] = Field(
+        None, description="Activities excluded from the qualified percentage with percentage estimate")
+    reasonable_compensation_flag: Optional[bool] = Field(
+        None, description="True if §41(b)(2)(B) reasonable-compensation analysis applies (owner/officers only)")
+    reasonable_compensation_note: Optional[str] = None
+    related_party_flag: Optional[bool] = Field(
+        None, description="True if this employee is a related party under IRC §267 or §707")
+    work_location: Optional[str] = Field(
+        None, description="Primary work location — confirms US-based research requirement")
 
 
 # ============================================================================
@@ -278,6 +320,8 @@ class Contractor(BaseModel):
         default_factory=dict,
         description="Raw questionnaire answers for this contractor keyed by question_id"
     )
+    compliance_flag: Optional[str] = Field(
+        None, description="REVIEW REQUIRED | COMPLIANT | null — flags contractors that need analyst attention before filing")
 
 
 # ============================================================================
@@ -296,6 +340,8 @@ class Supply(BaseModel):
     source_docs: List[str] = Field(default_factory=list, description="Invoice filenames for audit evidence")
     project_allocation: List[ProjectAllocation] = Field(..., min_items=1)
     notes: Optional[str] = None
+    compliance_flag: Optional[str] = Field(
+        None, description="REVIEW REQUIRED | COMPLIANT | null — flags supplies that need analyst attention before filing")
 
 
 # ============================================================================
@@ -390,6 +436,31 @@ class BusinessFlags(BaseModel):
     section_174_filed: bool = Field(
         False,
         description="True if IRC §174 amortization schedule has been filed for this tax year",
+    )
+    # ── Refined / audit-defence flags ───────────────────────────────────────
+    section_280c_election_made: Optional[bool] = Field(
+        None,
+        description="True = reduced-credit election made (deduction not reduced); False = full-rate credit (deduction reduced); null = undecided",
+    )
+    section_280c_note: Optional[str] = Field(
+        None,
+        description="Analyst note explaining the §280C(c) election decision and its net economic impact",
+    )
+    credit_carryforward_prior_years_balance: Optional[float] = Field(
+        None,
+        description="Unused R&D credit balance carried forward from prior years (IRC §39)",
+    )
+    credit_carryforward_note: Optional[str] = Field(
+        None,
+        description="Narrative explanation of the carryforward balance and applicable tax years",
+    )
+    camt_applicable: Optional[bool] = Field(
+        None,
+        description="True if corporate AMT (15% AFSI, IRA 2022) applies — generally requires ≥$1B average AFSI",
+    )
+    camt_note: Optional[str] = Field(
+        None,
+        description="Analyst note confirming CAMT applicability determination",
     )
 
 
@@ -505,6 +576,79 @@ class RDStudyData(BaseModel):
         default_factory=dict,
         description="Global questionnaire answers keyed by question_id for full traceability"
     )
+    # ── Refined / audit-defence year-level fields ────────────────────────────
+    asc_results: Optional[Dict] = Field(
+        None,
+        description="Pre-computed ASC results: avg_prior_3yr_qre, base_amount_50pct, excess_qre, credit_full_rate_14pct, credit_reduced_rate_280c",
+    )
+    audit_risk_assessment: Optional[Dict] = Field(
+        None,
+        description="overall_risk (LOW/MEDIUM/HIGH) plus list of risk_factors with factor and direction (MITIGATES/INCREASES)",
+    )
+    controlled_group_analysis: Optional[Dict] = Field(
+        None,
+        description="Analysis confirming whether any controlled group members exist under IRC §41(f)(1) / §1563",
+    )
+    documentation_standards: Optional[Dict] = Field(
+        None,
+        description="Primary substantiation method, contemporaneous attestation, retention policy",
+    )
+    excluded_activities_analysis: Optional[Dict] = Field(
+        None,
+        description="Per-exclusion analysis: funded research (§41(d)(4)(A)), foreign research (§41(d)(4)(F)), etc.",
+    )
+    filing_metadata: Optional[Dict] = Field(
+        None,
+        description="Federal return due date, extension status, actual filing date, Form 6765 version, preparer PTIN",
+    )
+    form_6765_section_b_checklist: Optional[Dict] = Field(
+        None,
+        description="Boolean checklist mirroring Form 6765 Section B (ASC method) line items",
+    )
+    funded_research_analysis: Optional[Dict] = Field(
+        None,
+        description="Analysis confirming no funded research exists: government grants, customer contracts, SBIR/STTR, etc.",
+    )
+    geographic_research_allocation: Optional[Dict] = Field(
+        None,
+        description="US vs foreign research percentage, research sites, foreign personnel note",
+    )
+    gross_receipts_labeled: Optional[Dict] = Field(
+        None,
+        description="Gross receipts keyed by calendar year label (e.g. {'2022': 8200000, '2021': 6400000})",
+    )
+    prior_year_qre_source_docs: Optional[Dict] = Field(
+        None,
+        description="Source document references for prior-year QREs used in ASC base calculation",
+    )
+    prototype_production_boundary: Optional[Dict] = Field(
+        None,
+        description="Per-project dict defining when experimentation ended and commercial production started",
+    )
+    qre_totals: Optional[Dict] = Field(
+        None,
+        description="Pre-computed year QRE totals: wage_qre, contractor_qre_after_65pct, supply_qre, cloud_qre, total_qre",
+    )
+    qualified_small_business_flag: Optional[Dict] = Field(
+        None,
+        description="QSB payroll-tax-offset eligibility: is_qualified_small_business, gross_receipts_test, five_year_rule",
+    )
+    section_174_details: Optional[Dict] = Field(
+        None,
+        description="§174 amortization detail: mandatory_amortization_applies, domestic_amortization_years, convention, first_year_deduction",
+    )
+    section_280c_computation: Optional[Dict] = Field(
+        None,
+        description="Detailed §280C(c) election analysis: credit rates, dollar amounts, net benefit comparison, recommendation",
+    )
+    shrinkback_analysis: Optional[Dict] = Field(
+        None,
+        description="Treas. Reg. §1.41-4(b)(2) shrinkback analysis: applied flag, analysis narrative, regulation reference",
+    )
+    state_credits: Optional[Dict] = Field(
+        None,
+        description="State R&D credit analysis keyed by form (e.g. colorado_dr0289): eligible, credit_rate, qre_basis, note",
+    )
     
     @field_validator('rd_projects')
     @classmethod
@@ -546,6 +690,10 @@ class MultiYearStudyData(BaseModel):
     tax_years: List[RDStudyData] = Field(
         ...,
         description="List of complete RDStudyData objects, one per tax year, ordered oldest to newest",
+    )
+    correction_summary: Optional[Dict] = Field(
+        None,
+        description="Study-level correction log: version, reviewer, issues_resolved, critical_corrections, compliance_additions, risk_flags_documented",
     )
 
     @field_validator("tax_years")

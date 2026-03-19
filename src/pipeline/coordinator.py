@@ -266,10 +266,14 @@ def _detect_input_type(input_path: Path) -> str:
 
     if suffix == ".json":
         try:
-            peek = input_path.read_text(encoding="utf-8")[:500]
+            # Read up to 4KB to safely detect multi-year JSON even when correction_summary
+            # or other new top-level keys precede the "tax_years" key.
+            peek = input_path.read_text(encoding="utf-8")[:4000]
             if "study_metadata_answers" in peek:
                 return "questionnaire"
-            if "tax_years" in peek:
+            # "study_title" is present only in multi-year wrappers (MultiYearStudyData).
+            # "tax_years" is the definitive key but may appear after the first 500 chars.
+            if "tax_years" in peek or '"study_title"' in peek:
                 return "multi_year_json"
         except Exception:
             pass

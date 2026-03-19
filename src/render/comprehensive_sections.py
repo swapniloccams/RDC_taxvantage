@@ -68,7 +68,7 @@ def _markdown_to_elements(text: str, skip_first_heading: bool = True) -> list:
 
     def _flush_bullets():
         if bullet_buffer:
-            items = [ListItem(Paragraph(_strip_inline_markdown(b), normal_style))
+            items = [ListItem(Paragraph(_safe(_strip_inline_markdown(b)), normal_style))
                      for b in bullet_buffer]
             elements.append(ListFlowable(items, bulletType='bullet'))
             elements.append(Spacer(1, 0.1 * inch))
@@ -97,7 +97,7 @@ def _markdown_to_elements(text: str, skip_first_heading: bool = True) -> list:
             clean = _strip_inline_markdown(line).strip()
             if clean:
                 elements.append(Spacer(1, 0.1 * inch))
-                elements.append(Paragraph(clean, h3_style))
+                elements.append(Paragraph(_safe(clean), h3_style))
             i += 1
             continue
 
@@ -131,7 +131,7 @@ def _markdown_to_elements(text: str, skip_first_heading: bool = True) -> list:
             i += 1
         para_text = ' '.join(para_lines).strip()
         if para_text:
-            elements.append(Paragraph(para_text, normal_style))
+            elements.append(Paragraph(_safe(para_text), normal_style))
             elements.append(Spacer(1, 0.08 * inch))
 
     _flush_bullets()
@@ -172,7 +172,7 @@ def create_title_page(study_data):
     elements.append(Spacer(1, 2*inch))
     elements.append(Paragraph("R&amp;D Tax Credit Study", title_style))
     elements.append(Spacer(1, 0.5*inch))
-    elements.append(Paragraph(f"Prepared for: {client}", h2_style))
+    elements.append(Paragraph(f"Prepared for: {_safe(client)}", h2_style))
     elements.append(Paragraph(f"Tax Year: {year}", h2_style))
     elements.append(PageBreak())
     return elements
@@ -316,12 +316,12 @@ def create_project_narratives(study_data, year_label: str = ""):
         pid = proj.get("project_id", "")
         assigned = ", ".join(proj_emp_map.get(pid, [])) or "—"
         summary_data.append([
-            Paragraph(pid, small_style),
-            Paragraph(proj.get("project_name", ""), small_style),
-            Paragraph(proj.get("status", "Ongoing"), small_style),
-            Paragraph(str(proj.get("start_date") or "—"), small_style),
-            Paragraph(str(proj.get("end_date") or "—"), small_style),
-            Paragraph(assigned, small_style),
+            Paragraph(_safe(pid), small_style),
+            Paragraph(_safe(proj.get("project_name", "")), small_style),
+            Paragraph(_safe(proj.get("status", "Ongoing")), small_style),
+            Paragraph(_safe(str(proj.get("start_date") or "—")), small_style),
+            Paragraph(_safe(str(proj.get("end_date") or "—")), small_style),
+            Paragraph(_safe(assigned), small_style),
         ])
 
     summary_table = Table(
@@ -341,7 +341,7 @@ def create_project_narratives(study_data, year_label: str = ""):
     elements.append(Spacer(1, 0.3 * inch))
 
     for i, proj in enumerate(projects, 1):
-        elements.append(Paragraph(f"Project {i}: {proj['project_name']}", h2_style))
+        elements.append(Paragraph(f"Project {i}: {_safe(proj['project_name'])}", h2_style))
         elements.append(Spacer(1, 0.1 * inch))
 
         # ── i) Basic Project Information ─────────────────────────────────────
@@ -349,15 +349,72 @@ def create_project_narratives(study_data, year_label: str = ""):
         pid = proj.get("project_id", "")
         assigned_names = ", ".join(proj_emp_map.get(pid, [])) or "—"
         basic_lines = [
-            f"<b>Project ID:</b> {pid}",
-            f"<b>Business Component:</b> {proj.get('business_component', '—')}",
-            f"<b>Status:</b> {proj.get('status', 'Ongoing')}",
+            f"<b>Project ID:</b> {_safe(pid)}",
+            f"<b>Business Component:</b> {_safe(proj.get('business_component', '—'))}",
+            f"<b>Status:</b> {_safe(proj.get('status', 'Ongoing'))}",
             f"<b>Start Date:</b> {str(proj.get('start_date') or '—')}",
             f"<b>End Date:</b> {str(proj.get('end_date') or '—')}",
-            f"<b>Assigned Employees:</b> {assigned_names}",
+            f"<b>Assigned Employees:</b> {_safe(assigned_names)}",
         ]
+        # ── Refined classification fields ─────────────────────────────────
+        if proj.get("business_component_classification"):
+            basic_lines.append(f"<b>BC Classification:</b> {_safe(proj['business_component_classification'])}")
+        if proj.get("cross_year_business_component_id"):
+            basic_lines.append(f"<b>Multi-Year BC ID:</b> {_safe(proj['cross_year_business_component_id'])}")
+        if proj.get("qra_year"):
+            basic_lines.append(f"<b>QRA Tax Year:</b> {proj['qra_year']}")
+        if proj.get("uncertainty_resolution_date"):
+            basic_lines.append(f"<b>Uncertainty Resolution Date:</b> {_safe(str(proj['uncertainty_resolution_date']))}")
+        sw_flag = proj.get("is_commercial_sale_software")
+        if sw_flag is not None:
+            basic_lines.append(f"<b>Commercial-Sale Software:</b> {'Yes' if sw_flag else 'No'}")
+            if sw_flag and proj.get("internal_use_software_exemption_note"):
+                basic_lines.append(f"<b>IUS Exemption:</b> {_safe(proj['internal_use_software_exemption_note'])}")
         for line in basic_lines:
             elements.append(Paragraph(line, normal_style))
+
+        # ── IRC Section References ────────────────────────────────────────
+        irc_refs = proj.get("irc_section_references") or []
+        if irc_refs:
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.append(Paragraph(
+                "<b>IRC / Reg. References:</b> " + _safe(", ".join(irc_refs)), normal_style))
+
+        # ── Project QRE Attribution ────────────────────────────────────────
+        proj_qre = proj.get("project_qre_summary") or proj.get("qre_summary") or {}
+        credit_attr = proj.get("credit_attribution") or {}
+        if proj_qre or credit_attr:
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.append(Paragraph("Project QRE &amp; Credit Attribution", h3_style))
+            attr_rows = [["Category", "Amount"]]
+            if proj_qre.get("wage_qre") is not None:
+                attr_rows.append(["Qualified Wages QRE", _format_money(proj_qre["wage_qre"])])
+            if proj_qre.get("contractor_qre_after_65pct") is not None:
+                attr_rows.append(["Qualified Contractor QRE (after 65%)", _format_money(proj_qre["contractor_qre_after_65pct"])])
+            if proj_qre.get("supply_qre") is not None:
+                attr_rows.append(["Qualified Supply QRE", _format_money(proj_qre["supply_qre"])])
+            if proj_qre.get("cloud_qre") is not None:
+                attr_rows.append(["Qualified Cloud QRE", _format_money(proj_qre["cloud_qre"])])
+            total_proj_qre = proj_qre.get("total_project_qre") or proj_qre.get("total_qre") or 0
+            if total_proj_qre:
+                attr_rows.append(["Total Project QRE", _format_money(total_proj_qre)])
+            if credit_attr.get("attribution_pct") is not None:
+                attr_rows.append(["Attribution % of Year QRE", f"{float(credit_attr['attribution_pct']):.2f}%"])
+            if credit_attr.get("proportional_credit") is not None:
+                attr_rows.append(["Proportional R&amp;D Credit", _format_money(credit_attr["proportional_credit"])])
+            if len(attr_rows) > 1:
+                at = Table(attr_rows, colWidths=[3.0*inch, 1.5*inch])
+                at.setStyle(TableStyle([
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A5276")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#EAF2F8")]),
+                ]))
+                elements.append(at)
+
         elements.append(Spacer(1, 0.15 * inch))
 
         # ── Project Staff Allocation table ───────────────────────────────────
@@ -483,6 +540,32 @@ def create_project_narratives(study_data, year_label: str = ""):
                 normal_style,
             ))
 
+        # ── Prior Art Search Summary ───────────────────────────────────────
+        if proj.get("prior_art_search_summary"):
+            elements.append(Spacer(1, 0.1 * inch))
+            elements.append(Paragraph("viii) Prior Art &amp; Literature Review", h3_style))
+            elements.append(Paragraph(_safe(proj["prior_art_search_summary"]), normal_style))
+
+        # ── Excluded Activities within this Project ───────────────────────
+        if proj.get("excluded_activities_within_project"):
+            elements.append(Spacer(1, 0.1 * inch))
+            elements.append(Paragraph("ix) Excluded Activities within This Project", h3_style))
+            elements.append(Paragraph(_safe(proj["excluded_activities_within_project"]), normal_style))
+
+        # ── Cross-Year Business Component Note ────────────────────────────
+        if proj.get("cross_year_note"):
+            elements.append(Spacer(1, 0.1 * inch))
+            note_style = ParagraphStyle(
+                "CrossYearNote", parent=small_style,
+                textColor=colors.HexColor("#154360"),
+                backColor=colors.HexColor("#D6EAF8"),
+                borderPad=4,
+            )
+            elements.append(Paragraph(
+                f"<b>Multi-Year Business Component Note:</b> {_safe(proj['cross_year_note'])}",
+                note_style,
+            ))
+
         elements.append(Spacer(1, 0.3 * inch))
 
     elements.append(PageBreak())
@@ -521,7 +604,7 @@ def create_four_part_test_table(study_data, year_label: str = ""):
     }
 
     for proj in projects:
-        elements.append(Paragraph(f"Project: {proj.get('project_name', '')}", h3_style))
+        elements.append(Paragraph(f"Project: {_safe(proj.get('project_name', ''))}", h3_style))
         test = proj.get("four_part_test", {})
         evidence_links = proj.get("evidence_links") or {}
 
@@ -628,26 +711,62 @@ def create_employee_wage_schedule(context):
     elements.append(t)
     elements.append(Spacer(1, 0.25 * inch))
 
-    # ── Per-employee activity narrative paragraphs ───────────────────────────
-    has_narratives = any(
-        e.get("generated_activity_narrative") or e.get("rd_activities_description")
-        for e in employees_raw
+    # ── Per-employee detailed blocks ─────────────────────────────────────────
+    has_emp_detail = any(
+        emp.get("generated_activity_narrative")
+        or emp.get("rd_activities_description")
+        or emp.get("qualification_narrative")
+        or emp.get("time_tracking_method")
+        for emp in employees_raw
     )
-    if has_narratives:
-        elements.append(Paragraph("Employee Activity Descriptions", h3_style))
+    if has_emp_detail:
+        elements.append(Paragraph("Employee Qualification Detail", h3_style))
         for emp in employees_raw:
-            narrative = (
+            name = emp.get("employee_name", "")
+            title = emp.get("job_title", "")
+            if not name:
+                continue
+            elements.append(Paragraph(
+                f"<b>{_safe(name)} — {_safe(title)}</b>",
+                ParagraphStyle("EmpNameStyle", parent=normal_style, textColor=colors.HexColor("#1A5276")),
+            ))
+
+            # Activity description (LLM-generated or raw)
+            activity_narr = (
                 emp.get("generated_activity_narrative")
                 or emp.get("rd_activities_description")
                 or ""
             )
-            if narrative:
-                elements.append(Paragraph(
-                    f"<b>{emp.get('employee_name', '')} — {emp.get('job_title', '')}</b>",
-                    normal_style,
-                ))
-                elements.append(Paragraph(narrative, normal_style))
-                elements.append(Spacer(1, 0.1 * inch))
+            if activity_narr:
+                elements.append(Paragraph("<b>R&amp;D Activity Description:</b>", normal_style))
+                elements.append(Paragraph(_safe(activity_narr), normal_style))
+
+            # Legal qualification narrative (from JSON)
+            qual_narr = emp.get("qualification_narrative") or ""
+            if qual_narr:
+                elements.append(Paragraph("<b>IRC §41 Qualification Analysis:</b>", normal_style))
+                elements.append(Paragraph(_safe(qual_narr), normal_style))
+
+            # Time tracking & exclusions metadata
+            meta_lines = []
+            if emp.get("time_tracking_method"):
+                meta_lines.append(f"<b>Time Tracking Method:</b> {_safe(emp['time_tracking_method'])}")
+            if emp.get("work_location"):
+                meta_lines.append(f"<b>Work Location:</b> {_safe(emp['work_location'])}")
+            if emp.get("excluded_time_description"):
+                meta_lines.append(f"<b>Excluded Time:</b> {_safe(emp['excluded_time_description'])}")
+            rc_flag = emp.get("reasonable_compensation_flag")
+            if rc_flag is not None:
+                flag_text = "Applies — see officer compensation analysis" if rc_flag else "Not applicable"
+                meta_lines.append(f"<b>§41(b)(2)(B) Reasonable Compensation:</b> {flag_text}")
+                if emp.get("reasonable_compensation_note"):
+                    meta_lines.append(f"<b>Note:</b> {_safe(emp['reasonable_compensation_note'])}")
+            if emp.get("related_party_flag"):
+                meta_lines.append("<b>Related Party Flag:</b> Yes — IRC §267 / §707 review required")
+            for ml in meta_lines:
+                elements.append(Paragraph(ml, small_style))
+
+            elements.append(Spacer(1, 0.15 * inch))
         elements.append(Spacer(1, 0.1 * inch))
 
     # ── Per-project activity breakdown table ─────────────────────────────────
@@ -1071,6 +1190,623 @@ def create_assumptions_section(study_data):
         elements.append(Paragraph(_safe(disc["disclaimer_text"]), small_style))
         
     elements.append(PageBreak())
+    return elements
+
+
+# ============================================================================
+# New Audit-Defence Sections (for novapulse_refined-style enriched JSON)
+# ============================================================================
+
+def create_audit_compliance_section(study_data) -> list:
+    """
+    §12 Audit Compliance Overview.
+
+    Renders: Audit Risk Assessment, §280C Computation, Qualified Small Business
+    analysis, CAMT applicability, credit carryforward, and filing metadata —
+    all sourced from the enriched JSON fields.
+    """
+    elements = []
+    has_content = any(study_data.get(k) for k in [
+        "audit_risk_assessment", "section_280c_computation",
+        "qualified_small_business_flag", "filing_metadata",
+    ])
+    bf = study_data.get("business_flags") or {}
+    has_bf_content = any(bf.get(k) for k in [
+        "section_280c_note", "credit_carryforward_note", "camt_note",
+        "camt_applicable",
+    ])
+    if not has_content and not has_bf_content:
+        return elements
+
+    elements.append(Paragraph("12. Audit Compliance Overview", h1_style))
+    elements.append(Spacer(1, 0.1 * inch))
+
+    # ── Filing Metadata ──────────────────────────────────────────────────
+    fm = study_data.get("filing_metadata") or {}
+    if fm:
+        elements.append(Paragraph("12.1 Filing Metadata", h2_style))
+        fm_rows = [["Field", "Value"]]
+        field_map = [
+            ("federal_return_due_date", "Federal Return Due Date"),
+            ("extension_due_date", "Extension Due Date"),
+            ("extension_filed", "Extension Filed"),
+            ("actual_filing_date", "Actual Filing Date"),
+            ("form_6765_version", "Form 6765 Version"),
+            ("return_type", "Return Type"),
+            ("amended_return", "Amended Return"),
+            ("ptin_preparer", "Preparer (PTIN)"),
+        ]
+        for key, label in field_map:
+            val = fm.get(key)
+            if val is not None:
+                if isinstance(val, bool):
+                    val = "Yes" if val else "No"
+                fm_rows.append([label, Paragraph(_safe(str(val)), small_style)])
+        if len(fm_rows) > 1:
+            ft = Table(fm_rows, colWidths=[2.2*inch, 4.1*inch])
+            ft.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(ft)
+            elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Audit Risk Assessment ────────────────────────────────────────────
+    ara = study_data.get("audit_risk_assessment") or {}
+    if ara:
+        elements.append(Paragraph("12.2 Audit Risk Assessment", h2_style))
+        risk_level = str(ara.get("overall_risk", "—")).upper()
+        risk_hex = {"LOW": "#1E8449", "MEDIUM": "#D35400", "HIGH": "#C0392B"}.get(risk_level, "#333333")
+        risk_label_style = ParagraphStyle(
+            "RiskLevelStyle", parent=normal_style,
+            textColor=colors.HexColor(risk_hex), fontName="Helvetica-Bold",
+        )
+        elements.append(Paragraph(f"Overall Audit Risk: {risk_level}", risk_label_style))
+        risk_factors = ara.get("risk_factors") or []
+        if risk_factors:
+            rf_rows = [["Risk Factor", "Direction"]]
+            for rf in risk_factors:
+                direction = str(rf.get("direction", "")).upper()
+                dir_color = colors.HexColor("#1E8449") if "MITIGAT" in direction else colors.HexColor("#C0392B")
+                rf_rows.append([
+                    Paragraph(_safe(rf.get("factor", "")), small_style),
+                    Paragraph(f"<b>{direction}</b>", ParagraphStyle(
+                        "DirStyle", parent=small_style, textColor=dir_color,
+                    )),
+                ])
+            rft = Table(rf_rows, colWidths=[4.5*inch, 1.8*inch])
+            rft.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(Spacer(1, 0.1 * inch))
+            elements.append(rft)
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── §280C Computation ────────────────────────────────────────────────
+    s280c = study_data.get("section_280c_computation") or {}
+    if s280c:
+        elements.append(Paragraph("12.3 IRC §280C(c) Election Analysis", h2_style))
+        s280c_rows = [["Line Item", "Value"]]
+        s280c_map = [
+            ("full_credit_rate", "Full Credit Rate (IRC §41 — 14%)"),
+            ("reduced_credit_rate_280c", "Reduced Credit Rate (§280C election)"),
+            ("credit_full_rate", "Credit at Full Rate"),
+            ("credit_reduced_rate", "Credit at Reduced Rate"),
+            ("incremental_credit_if_full_rate", "Incremental Credit if Full Rate"),
+            ("incremental_174_deduction_lost_if_full_rate", "§174 Deduction Lost (Full Rate)"),
+            ("tax_value_of_174_reduction_at_21pct", "Tax Value of §174 Reduction @ 21%"),
+            ("net_benefit_of_full_rate_vs_reduced", "Net Benefit: Full Rate vs. Reduced"),
+        ]
+        for key, label in s280c_map:
+            val = s280c.get(key)
+            if val is not None:
+                try:
+                    fval = float(val)
+                    display = f"{fval*100:.2f}%" if "rate" in key.lower() and fval < 1 else _format_money(fval)
+                except Exception:
+                    display = str(val)
+                s280c_rows.append([label, display])
+        if s280c.get("recommendation"):
+            s280c_rows.append(["Analyst Recommendation", Paragraph(_safe(s280c["recommendation"]), small_style)])
+        s280c_t = Table(s280c_rows, colWidths=[3.5*inch, 2.8*inch])
+        s280c_t.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (1, 1), (1, -2), "RIGHT"),
+        ]))
+        elements.append(s280c_t)
+
+        # §280C election status from business_flags
+        election_made = bf.get("section_280c_election_made")
+        if election_made is not None:
+            status = "MADE (reduced-credit elected)" if election_made else "NOT MADE (full-rate credit — §174 deduction reduced)"
+            badge_color = colors.HexColor("#1E8449") if election_made else colors.HexColor("#D35400")
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.append(Paragraph(
+                f"<b>§280C Election Status:</b> {_safe(status)}",
+                ParagraphStyle("ElecStyle", parent=normal_style, textColor=badge_color),
+            ))
+        elif bf.get("section_280c_note"):
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.append(Paragraph(_safe(bf["section_280c_note"]),
+                ParagraphStyle("S280Note", parent=small_style, textColor=colors.HexColor("#4A235A"))))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Qualified Small Business ─────────────────────────────────────────
+    qsb = study_data.get("qualified_small_business_flag") or {}
+    if qsb:
+        elements.append(Paragraph("12.4 Qualified Small Business (IRC §41(h)) Analysis", h2_style))
+        is_qsb = qsb.get("is_qualified_small_business")
+        qsb_text = "Qualifies as QSB" if is_qsb else "Does NOT qualify as QSB"
+        qsb_color = colors.HexColor("#1E8449") if is_qsb else colors.HexColor("#808B96")
+        elements.append(Paragraph(
+            f"<b>QSB Status:</b> {qsb_text}",
+            ParagraphStyle("QSBStyle", parent=normal_style, textColor=qsb_color),
+        ))
+        if qsb.get("gross_receipts_test"):
+            elements.append(Paragraph(_safe(qsb["gross_receipts_test"]), small_style))
+        if qsb.get("five_year_rule"):
+            elements.append(Paragraph(_safe(qsb["five_year_rule"]), small_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── CAMT Applicability ───────────────────────────────────────────────
+    camt_applicable = bf.get("camt_applicable")
+    if camt_applicable is not None:
+        elements.append(Paragraph("12.5 Corporate Alternative Minimum Tax (CAMT)", h2_style))
+        camt_text = "Applicable" if camt_applicable else "Not Applicable"
+        camt_color = colors.HexColor("#C0392B") if camt_applicable else colors.HexColor("#1E8449")
+        elements.append(Paragraph(
+            f"<b>CAMT Status:</b> {camt_text}",
+            ParagraphStyle("CAMTStyle", parent=normal_style, textColor=camt_color),
+        ))
+        if bf.get("camt_note"):
+            elements.append(Paragraph(_safe(bf["camt_note"]), small_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Credit Carryforward ──────────────────────────────────────────────
+    cf_balance = bf.get("credit_carryforward_prior_years_balance")
+    if cf_balance is not None:
+        elements.append(Paragraph("12.6 Credit Carryforward (IRC §39)", h2_style))
+        elements.append(Paragraph(
+            f"<b>Prior Years Carryforward Balance:</b> {_format_money(cf_balance)}",
+            normal_style,
+        ))
+        if bf.get("credit_carryforward_note"):
+            elements.append(Paragraph(_safe(bf["credit_carryforward_note"]), small_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    elements.append(PageBreak())
+    return elements
+
+
+def create_research_methodology_section(study_data) -> list:
+    """
+    §13 Research Methodology & Compliance Analysis.
+
+    Renders: Funded Research, Controlled Group, Shrinkback, Excluded Activities,
+    Geographic Allocation, Documentation Standards, Form 6765 Checklist,
+    §174 Details, Prior Year QRE Source Docs, Prototype/Production Boundary,
+    and State Credits.
+    """
+    elements = []
+    keys_to_check = [
+        "funded_research_analysis", "controlled_group_analysis", "shrinkback_analysis",
+        "excluded_activities_analysis", "geographic_research_allocation",
+        "documentation_standards", "form_6765_section_b_checklist",
+        "section_174_details", "prior_year_qre_source_docs",
+        "prototype_production_boundary", "state_credits",
+    ]
+    if not any(study_data.get(k) for k in keys_to_check):
+        return elements
+
+    elements.append(Paragraph("13. Research Methodology &amp; Compliance Analysis", h1_style))
+    elements.append(Spacer(1, 0.1 * inch))
+
+    # ── Funded Research Analysis ─────────────────────────────────────────
+    fra = study_data.get("funded_research_analysis") or {}
+    if fra:
+        elements.append(Paragraph("13.1 Funded Research Analysis (IRC §41(d)(4)(A))", h2_style))
+        if fra.get("analysis"):
+            elements.append(Paragraph(_safe(fra["analysis"]), normal_style))
+        if fra.get("customer_contract_review"):
+            elements.append(Spacer(1, 0.05 * inch))
+            elements.append(Paragraph(
+                f"<b>Customer Contract Review:</b> {_safe(fra['customer_contract_review'])}",
+                small_style,
+            ))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Controlled Group Analysis ────────────────────────────────────────
+    cga = study_data.get("controlled_group_analysis") or {}
+    if cga:
+        elements.append(Paragraph("13.2 Controlled Group Analysis (IRC §41(f)(1))", h2_style))
+        if cga.get("analysis"):
+            elements.append(Paragraph(_safe(cga["analysis"]), normal_style))
+        if cga.get("conclusion"):
+            elements.append(Paragraph(
+                f"<b>Conclusion:</b> {_safe(cga['conclusion'])}",
+                ParagraphStyle("ConcStyle", parent=small_style, textColor=colors.HexColor("#1E8449")),
+            ))
+        # Subsidiaries / brother-sister corps
+        subs = cga.get("subsidiaries") or []
+        bro_sis = cga.get("brother_sister_corps") or []
+        if subs:
+            elements.append(Paragraph(f"<b>Subsidiaries:</b> {_safe(', '.join(str(s) for s in subs))}", small_style))
+        if bro_sis:
+            elements.append(Paragraph(f"<b>Brother-Sister Corps:</b> {_safe(', '.join(str(s) for s in bro_sis))}", small_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Shrinkback Analysis ──────────────────────────────────────────────
+    sha = study_data.get("shrinkback_analysis") or {}
+    if sha:
+        elements.append(Paragraph("13.3 Shrinkback Analysis (Treas. Reg. §1.41-4(b)(2))", h2_style))
+        applied = sha.get("applied")
+        applied_text = "Applied" if applied else "Not Required"
+        applied_color = colors.HexColor("#D35400") if applied else colors.HexColor("#1E8449")
+        elements.append(Paragraph(
+            f"<b>Shrinkback:</b> {applied_text}",
+            ParagraphStyle("ShrinkStyle", parent=normal_style, textColor=applied_color),
+        ))
+        if sha.get("analysis"):
+            elements.append(Paragraph(_safe(sha["analysis"]), normal_style))
+        if sha.get("treas_reg_reference"):
+            elements.append(Paragraph(
+                f"<b>Regulation Reference:</b> {_safe(sha['treas_reg_reference'])}",
+                small_style,
+            ))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Excluded Activities Analysis ─────────────────────────────────────
+    eaa = study_data.get("excluded_activities_analysis") or {}
+    if eaa:
+        elements.append(Paragraph("13.4 Excluded Activities Analysis (IRC §41(d)(4))", h2_style))
+        exclusion_labels = {
+            "irc_41d4a_funded_research": "§41(d)(4)(A) — Funded Research",
+            "irc_41d4b_foreign_research": "§41(d)(4)(F) — Foreign Research",
+            "irc_41d4c_social_sciences": "§41(d)(4)(B) — Social Sciences / Arts / Humanities",
+            "irc_41d4d_adaptation": "§41(d)(4)(C) — Adaptation of Existing Business Components",
+            "irc_41d4e_duplication": "§41(d)(4)(D) — Duplication of Prior Research",
+            "irc_41d4f_surveys": "§41(d)(4)(E) — Surveys, Studies, Research Relating to Management",
+            "irc_41d4g_internal_use_software": "§41(d)(4)(F) — Internal Use Software (Standard)",
+        }
+        excl_rows = [["Exclusion", "Applies?", "Notes"]]
+        for key, label in exclusion_labels.items():
+            entry = eaa.get(key)
+            if entry is None:
+                continue
+            if isinstance(entry, dict):
+                applies = "Yes" if entry.get("applies") else "No"
+                notes = _safe(entry.get("notes") or "—")
+            else:
+                applies = "Yes" if entry else "No"
+                notes = "—"
+            excl_rows.append([
+                Paragraph(_safe(label), small_style),
+                Paragraph(applies, ParagraphStyle(
+                    "ApplStyle", parent=small_style,
+                    textColor=colors.HexColor("#C0392B") if applies == "Yes" else colors.HexColor("#1E8449"),
+                )),
+                Paragraph(notes, small_style),
+            ])
+        if len(excl_rows) > 1:
+            et = Table(excl_rows, colWidths=[2.5*inch, 0.7*inch, 3.1*inch])
+            et.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(et)
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Geographic Research Allocation ───────────────────────────────────
+    geo = study_data.get("geographic_research_allocation") or {}
+    if geo:
+        elements.append(Paragraph("13.5 Geographic Research Allocation", h2_style))
+        us_pct = geo.get("us_research_pct")
+        foreign_pct = geo.get("foreign_research_pct")
+        if us_pct is not None:
+            elements.append(Paragraph(
+                f"<b>US Research:</b> {float(us_pct)*100:.0f}%  |  "
+                f"<b>Foreign Research:</b> {float(foreign_pct or 0)*100:.0f}%",
+                normal_style,
+            ))
+        sites = geo.get("research_sites") or []
+        if sites:
+            site_rows = [["Address", "State", "% of Research"]]
+            for site in sites:
+                site_rows.append([
+                    Paragraph(_safe(site.get("address", "—")), small_style),
+                    site.get("state") or "—",
+                    f"{float(site.get('pct_of_research', 0))*100:.0f}%",
+                ])
+            st = Table(site_rows, colWidths=[3.5*inch, 0.7*inch, 1.1*inch])
+            st.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A5276")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#EAF2F8")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.append(st)
+        if geo.get("foreign_personnel"):
+            elements.append(Spacer(1, 0.05 * inch))
+            elements.append(Paragraph(
+                f"<b>Foreign Personnel:</b> {_safe(geo['foreign_personnel'])}", small_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Documentation Standards ──────────────────────────────────────────
+    ds = study_data.get("documentation_standards") or {}
+    if ds:
+        elements.append(Paragraph("13.6 Documentation Standards &amp; Substantiation", h2_style))
+        if ds.get("primary_substantiation_method"):
+            elements.append(Paragraph(
+                f"<b>Substantiation Method:</b> {_safe(ds['primary_substantiation_method'])}",
+                normal_style,
+            ))
+        if ds.get("contemporaneous_documentation_attestation"):
+            elements.append(Paragraph(_safe(ds["contemporaneous_documentation_attestation"]), small_style))
+        if ds.get("retention_policy"):
+            elements.append(Paragraph(
+                f"<b>Retention Policy:</b> {_safe(ds['retention_policy'])}", small_style))
+        doc_types = ds.get("primary_documentation_types") or []
+        if doc_types:
+            elements.append(Spacer(1, 0.05 * inch))
+            elements.append(Paragraph("<b>Primary Documentation Types:</b>", small_style))
+            items = [ListItem(Paragraph(_safe(str(d)), small_style)) for d in doc_types]
+            elements.append(ListFlowable(items, bulletType='bullet'))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Form 6765 Section B Checklist ────────────────────────────────────
+    f6765 = study_data.get("form_6765_section_b_checklist") or {}
+    if f6765:
+        elements.append(Paragraph("13.7 Form 6765 Section B Checklist (ASC Method)", h2_style))
+        chk_rows = [["Item", "Status"]]
+        chk_labels = {
+            "section_a_regular_credit": "Section A — Regular Credit Method",
+            "section_b_asc_method": "Section B — Alternative Simplified Credit (ASC)",
+            "controlled_group_member": "Controlled Group Member",
+            "small_business_for_amt_offset": "Qualified Small Business for AMT Offset",
+            "qualified_small_business_payroll_offset": "Payroll Tax Offset (§41(h))",
+            "energy_research_consortium": "Energy Research Consortium",
+            "research_payments_to_universities": "Basic Research Payments to Universities",
+        }
+        for key, label in chk_labels.items():
+            val = f6765.get(key)
+            if val is not None:
+                chk_rows.append([
+                    Paragraph(_safe(label), small_style),
+                    Paragraph("☑ Yes" if val else "☐ No", ParagraphStyle(
+                        "ChkStyle", parent=small_style,
+                        textColor=colors.HexColor("#1E8449") if val else colors.HexColor("#808B96"),
+                    )),
+                ])
+        if len(chk_rows) > 1:
+            ct = Table(chk_rows, colWidths=[4.5*inch, 1.8*inch])
+            ct.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+            ]))
+            elements.append(ct)
+        if f6765.get("note"):
+            elements.append(Spacer(1, 0.05 * inch))
+            elements.append(Paragraph(_safe(f6765["note"]), small_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── §174 Details ─────────────────────────────────────────────────────
+    s174 = study_data.get("section_174_details") or {}
+    if s174:
+        elements.append(Paragraph("13.8 IRC §174 Amortization Details", h2_style))
+        s174_rows = [["Field", "Value"]]
+        s174_map = [
+            ("mandatory_amortization_applies", "Mandatory Amortization Applies"),
+            ("effective_date_note", "Effective Date"),
+            ("domestic_amortization_years", "Domestic Amortization Period (years)"),
+            ("amortization_convention", "Amortization Convention"),
+            ("first_year_deductible_pct", "First-Year Deductible %"),
+            ("amortizable_amount_this_year", "Amortizable Amount This Year"),
+            ("amortization_deduction_this_year", "Amortization Deduction This Year"),
+            ("remaining_unamortized_balance", "Remaining Unamortized Balance"),
+        ]
+        for key, label in s174_map:
+            val = s174.get(key)
+            if val is not None:
+                if isinstance(val, bool):
+                    val = "Yes" if val else "No"
+                elif isinstance(val, (int, float)) and "amount" in key.lower():
+                    val = _format_money(val)
+                elif isinstance(val, float) and val < 1:
+                    val = f"{val*100:.0f}%"
+                s174_rows.append([label, Paragraph(_safe(str(val)), small_style)])
+        if len(s174_rows) > 1:
+            s174t = Table(s174_rows, colWidths=[2.8*inch, 3.5*inch])
+            s174t.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(s174t)
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Prior Year QRE Source Docs ───────────────────────────────────────
+    pyqre = study_data.get("prior_year_qre_source_docs") or {}
+    if pyqre:
+        elements.append(Paragraph("13.9 Prior Year QRE Source Documents (ASC Base)", h2_style))
+        pyqre_rows = [["Year", "QRE Amount", "Source Document"]]
+        for year_key, entry in sorted(pyqre.items()):
+            if isinstance(entry, dict):
+                qre_amt = _format_money(entry.get("qre", 0))
+                source = _safe(entry.get("source", "—"))
+            else:
+                qre_amt = "—"
+                source = _safe(str(entry))
+            year_label_display = year_key.replace("year_minus_", "Year −").replace("_", " ")
+            pyqre_rows.append([
+                year_label_display,
+                qre_amt,
+                Paragraph(source, small_style),
+            ])
+        if len(pyqre_rows) > 1:
+            pyqret = Table(pyqre_rows, colWidths=[1.2*inch, 1.2*inch, 3.9*inch])
+            pyqret.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(pyqret)
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── Prototype / Production Boundary ─────────────────────────────────
+    ppb = study_data.get("prototype_production_boundary") or {}
+    if ppb:
+        elements.append(Paragraph("13.10 Prototype vs. Production Boundary", h2_style))
+        ppb_rows = [["Project", "Experimentation End", "Production Start", "Boundary Description"]]
+        for proj_id, boundary in ppb.items():
+            if isinstance(boundary, dict):
+                ppb_rows.append([
+                    proj_id,
+                    str(boundary.get("experimentation_end") or "—"),
+                    str(boundary.get("production_start") or "—"),
+                    Paragraph(_safe(boundary.get("boundary_description") or "—"), small_style),
+                ])
+        if len(ppb_rows) > 1:
+            ppbt = Table(ppb_rows, colWidths=[0.8*inch, 1.2*inch, 1.2*inch, 3.1*inch])
+            ppbt.setStyle(TableStyle([
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F4F6F7")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            elements.append(ppbt)
+        elements.append(Spacer(1, 0.2 * inch))
+
+    # ── State Credits ────────────────────────────────────────────────────
+    sc = study_data.get("state_credits") or {}
+    if sc:
+        elements.append(Paragraph("13.11 State R&amp;D Credits", h2_style))
+        for form_key, details in sc.items():
+            if not isinstance(details, dict):
+                continue
+            form_label = form_key.replace("_", " ").title()
+            eligible = details.get("eligible")
+            elig_text = "Eligible" if eligible else "Not Eligible"
+            elig_hex = "#1E8449" if eligible else "#808B96"
+            elig_style = ParagraphStyle(
+                f"EligStyle_{form_key}", parent=normal_style,
+                textColor=colors.HexColor(elig_hex),
+            )
+            elements.append(Paragraph(f"{_safe(form_label)}: {elig_text}", elig_style))
+            state_rows = [["Field", "Value"]]
+            state_map = [
+                ("credit_rate", "Credit Rate"),
+                ("qre_basis", "QRE Basis"),
+                ("form_reference", "Form Reference"),
+            ]
+            for key, label in state_map:
+                val = details.get(key)
+                if val is not None:
+                    display = f"{float(val)*100:.0f}%" if key == "credit_rate" else _safe(str(val))
+                    state_rows.append([label, display])
+            if len(state_rows) > 1:
+                sct = Table(state_rows, colWidths=[1.8*inch, 4.5*inch])
+                sct.setStyle(TableStyle([
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A5276")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#EAF2F8")]),
+                ]))
+                elements.append(Spacer(1, 0.05 * inch))
+                elements.append(sct)
+            if details.get("note"):
+                elements.append(Paragraph(_safe(details["note"]), small_style))
+            elements.append(Spacer(1, 0.15 * inch))
+
+    elements.append(PageBreak())
+    return elements
+
+
+def create_correction_summary_section(multi_year_raw: dict) -> list:
+    """
+    Study-Level Correction Summary — rendered at the front of multi-year reports
+    when a correction_summary key is present in the top-level JSON.
+    """
+    cs = multi_year_raw.get("correction_summary") if isinstance(multi_year_raw, dict) else None
+    if not cs:
+        return []
+
+    elements = []
+    elements.append(Paragraph("Study Correction &amp; Compliance Log", h2_style))
+    version = cs.get("version") or ""
+    reviewer = cs.get("prepared_by_reviewer") or ""
+    issues = cs.get("issues_resolved") or 0
+    if version or reviewer:
+        elements.append(Paragraph(
+            f"<b>Version:</b> {_safe(version)}  |  "
+            f"<b>Reviewer:</b> {_safe(reviewer)}  |  "
+            f"<b>Issues Resolved:</b> {issues}",
+            small_style,
+        ))
+        elements.append(Spacer(1, 0.1 * inch))
+
+    def _render_list(heading: str, items: list, color: str = "#2C3E50"):
+        if not items:
+            return
+        elements.append(Paragraph(heading, ParagraphStyle(
+            "CorHdr", parent=normal_style,
+            textColor=colors.HexColor(color), fontName="Helvetica-Bold",
+        )))
+        for item in items:
+            elements.append(Paragraph(f"• {_safe(str(item))}", small_style))
+        elements.append(Spacer(1, 0.08 * inch))
+
+    _render_list("Critical Corrections", cs.get("critical_corrections") or [], "#C0392B")
+    _render_list("Compliance Additions", cs.get("compliance_additions") or [], "#1A5276")
+    _render_list("Risk Flags Documented", cs.get("risk_flags_documented") or [], "#D35400")
+
+    elements.append(Spacer(1, 0.15 * inch))
     return elements
 
 

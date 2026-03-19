@@ -63,6 +63,11 @@ def validate_and_parse_multi_year_json(context: dict = None) -> dict:
     context["is_multi_year"] = True
     context["multi_year_title"] = multi_study.study_title
     context["input_format"] = "multi_year_json"
+    # Store top-level raw dict so builder can access correction_summary and other study-level fields
+    context["_multi_year_raw"] = {
+        "correction_summary": raw.get("correction_summary"),
+        "study_title": multi_study.study_title,
+    }
 
     year_labels = [yr["study_metadata"]["tax_year"]["year_label"] for yr in year_dicts]
     project_counts = [len(yr["rd_projects"]) for yr in year_dicts]

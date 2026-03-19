@@ -42,6 +42,8 @@ from src.render.comprehensive_sections import (
     create_company_background,
     create_cost_methodology,
     create_documentation_index,
+    create_audit_compliance_section,
+    create_research_methodology_section,
 )
 
 styles = getSampleStyleSheet()
@@ -80,12 +82,16 @@ _cell_hdr = ParagraphStyle(
 )
 
 
+def _safe(text: str) -> str:
+    """Escape & for ReportLab's XML parser."""
+    return str(text).replace("&", "&amp;")
+
+
 def _p(text: str, style=None) -> Paragraph:
     """Wrap text in a Paragraph, escaping & so ReportLab's XML parser doesn't choke."""
     if style is None:
         style = _cell8
-    safe = str(text).replace("&", "&amp;")
-    return Paragraph(safe, style)
+    return Paragraph(_safe(text), style)
 
 
 def _rd(text: str, style=None) -> str:
@@ -207,10 +213,10 @@ def _create_project_title_page(
         Spacer(1, 2 * inch),
         Paragraph("R&amp;D Tax Credit Study", title_style),
         Spacer(1, 0.3 * inch),
-        Paragraph(f"Project: {project_name}", h2_style),
-        Paragraph(f"Project ID: {project_id}", h2_style),
+        Paragraph(f"Project: {_safe(project_name)}", h2_style),
+        Paragraph(f"Project ID: {_safe(project_id)}", h2_style),
         Spacer(1, 0.2 * inch),
-        Paragraph(f"Prepared for: {client_name}", h2_style),
+        Paragraph(f"Prepared for: {_safe(client_name)}", h2_style),
         Paragraph(f"Tax Year(s): {year_range}", h2_style),
         PageBreak(),
     ]
@@ -316,74 +322,160 @@ def _create_project_narratives(active_years: list) -> list:
     for year_label, yr_data, proj in active_years:
         project_id = proj.get("project_id", "")
         project_name = _get_project_name(proj)
-        elements.append(Paragraph(f"Tax Year {year_label} — {project_id}: {project_name}", h2_style))
+        elements.append(Paragraph(f"Tax Year {_safe(year_label)} — {_safe(project_id)}: {_safe(project_name)}", h2_style))
 
         ts = proj.get("technical_summary") or {}
 
-        # Prefer LLM-generated narrative if available (full pipeline path)
-        gen_narratives = yr_data.get("generated_narratives") or {}
-        project_narrative = gen_narratives.get(project_id, "")
+        # Prefer LLM-generated narratives if available (full pipeline path).
+        # gen_narratives is keyed by section name: project_description, new_improved_component,
+        # elimination_uncertainty, process_experimentation, technological_nature, resolution.
+        gen_narratives = proj.get("generated_narratives") or {}
 
-        if project_narrative:
-            elements.extend(_markdown_to_elements(project_narrative, skip_first_heading=True))
+        # ── Project classification & metadata ─────────────────────────────
+        meta_lines = []
+        if proj.get("business_component_classification"):
+            meta_lines.append(f"<b>BC Classification:</b> {_safe(proj['business_component_classification'])}")
+        if proj.get("cross_year_business_component_id"):
+            meta_lines.append(f"<b>Multi-Year BC ID:</b> {_safe(proj['cross_year_business_component_id'])}")
+        if proj.get("uncertainty_resolution_date"):
+            meta_lines.append(f"<b>Uncertainty Resolved:</b> {_safe(str(proj['uncertainty_resolution_date']))}")
+        sw_flag = proj.get("is_commercial_sale_software")
+        if sw_flag is not None:
+            meta_lines.append(f"<b>Commercial-Sale Software:</b> {'Yes' if sw_flag else 'No'}")
+            if sw_flag and proj.get("internal_use_software_exemption_note"):
+                meta_lines.append(f"<b>IUS Exemption:</b> {_safe(proj['internal_use_software_exemption_note'])}")
+        irc_refs = proj.get("irc_section_references") or []
+        if irc_refs:
+            meta_lines.append(f"<b>IRC References:</b> {_safe(', '.join(irc_refs))}")
+        for ml in meta_lines:
+            elements.append(Paragraph(ml, normal_style))
+        if meta_lines:
+            elements.append(Spacer(1, 0.1 * inch))
+
+        if gen_narratives:
+            # Render each section from LLM-generated text
+            section_map = [
+                ("ii) Project Description",                "project_description"),
+                ("iii) New or Improved Business Component","new_improved_component"),
+                ("iv) Elimination of Uncertainty",         "elimination_uncertainty"),
+                ("v) Process of Experimentation",          "process_experimentation"),
+                ("vi) Technological in Nature",            "technological_nature"),
+                ("vii) Resolution",                        "resolution"),
+            ]
+            for heading, key in section_map:
+                text = gen_narratives.get(key, "")
+                if text:
+                    elements.append(Paragraph(f"<b>{heading}</b>", h3_style))
+                    elements.extend(_markdown_to_elements(text, skip_first_heading=True))
+                    elements.append(Spacer(1, 0.1 * inch))
         else:
-            # (i) Objective
+            # Fallback: render raw JSON fields when LLM narratives are not available
             obj = ts.get("objective", "")
             if obj:
                 elements.append(Paragraph("<b>i. Objective</b>", h3_style))
-                elements.append(Paragraph(obj, normal_style))
+                elements.append(Paragraph(_safe(obj), normal_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # (ii) Problem Statement
             problem = ts.get("problem_statement", "")
             if problem:
                 elements.append(Paragraph("<b>ii. Problem Statement</b>", h3_style))
-                elements.append(Paragraph(problem, normal_style))
+                elements.append(Paragraph(_safe(problem), normal_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # (iii) Technical Uncertainty
             tech_unc = ts.get("technical_uncertainty", "")
             if tech_unc:
                 elements.append(Paragraph("<b>iii. Technical Uncertainty</b>", h3_style))
-                elements.append(Paragraph(tech_unc, normal_style))
+                elements.append(Paragraph(_safe(tech_unc), normal_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # (iv) Hypotheses Tested
             hypotheses = ts.get("hypotheses_tested") or []
             if hypotheses:
                 elements.append(Paragraph("<b>iv. Hypotheses Tested</b>", h3_style))
                 for h in hypotheses:
-                    elements.append(Paragraph(f"• {h}", normal_style))
+                    elements.append(Paragraph(f"\u2022 {_safe(h)}", normal_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # (v) Process of Experimentation
             exp_steps = ts.get("experimentation_process") or []
             if exp_steps:
                 elements.append(Paragraph("<b>v. Process of Experimentation</b>", h3_style))
                 for step in exp_steps:
-                    elements.append(Paragraph(f"• {step}", normal_style))
+                    elements.append(Paragraph(f"\u2022 {_safe(step)}", normal_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # (vi) Alternatives Considered
             alternatives = ts.get("alternatives_considered") or []
             if alternatives:
                 elements.append(Paragraph("<b>vi. Alternatives Considered</b>", h3_style))
                 for alt in alternatives:
-                    elements.append(Paragraph(f"• {alt}", normal_style))
+                    elements.append(Paragraph(f"\u2022 {_safe(alt)}", normal_style))
                 elements.append(Spacer(1, 0.1 * inch))
 
-            # (vii) Results / Outcome & Failures / Iterations
             results = ts.get("results_or_outcome", "")
             if results:
                 elements.append(Paragraph("<b>vii. Results and Outcome</b>", h3_style))
-                elements.append(Paragraph(results, normal_style))
+                elements.append(Paragraph(_safe(results), normal_style))
                 elements.append(Spacer(1, 0.08 * inch))
 
             failures = ts.get("failures_or_iterations", "")
             if failures:
                 elements.append(Paragraph("<b>Failures and Iterations</b>", h3_style))
-                elements.append(Paragraph(failures, normal_style))
+                elements.append(Paragraph(_safe(failures), normal_style))
                 elements.append(Spacer(1, 0.08 * inch))
+
+        # ── Prior Art & Excluded Activities ──────────────────────────────
+        if proj.get("prior_art_search_summary"):
+            elements.append(Paragraph("<b>viii) Prior Art &amp; Literature Review</b>", h3_style))
+            elements.append(Paragraph(_safe(proj["prior_art_search_summary"]), normal_style))
+            elements.append(Spacer(1, 0.08 * inch))
+        if proj.get("excluded_activities_within_project"):
+            elements.append(Paragraph("<b>ix) Excluded Activities within This Project</b>", h3_style))
+            elements.append(Paragraph(_safe(proj["excluded_activities_within_project"]), normal_style))
+            elements.append(Spacer(1, 0.08 * inch))
+
+        # ── Cross-Year Note ───────────────────────────────────────────────
+        if proj.get("cross_year_note"):
+            from reportlab.lib.styles import ParagraphStyle as _PS
+            cy_style = _PS("CYNote_pb", parent=normal_style,
+                           textColor=colors.HexColor("#154360"),
+                           backColor=colors.HexColor("#D6EAF8"), borderPad=4)
+            elements.append(Paragraph(
+                f"<b>Multi-Year BC Note:</b> {_safe(proj['cross_year_note'])}", cy_style))
+            elements.append(Spacer(1, 0.1 * inch))
+
+        # ── Project QRE Attribution ───────────────────────────────────────
+        proj_qre = proj.get("project_qre_summary") or proj.get("qre_summary") or {}
+        credit_attr = proj.get("credit_attribution") or {}
+        if proj_qre or credit_attr:
+            elements.append(Paragraph("<b>Project QRE &amp; Credit Attribution</b>", h3_style))
+            attr_rows = [["Category", "Amount"]]
+            if proj_qre.get("wage_qre") is not None:
+                attr_rows.append(["Qualified Wages QRE", _format_money(proj_qre["wage_qre"])])
+            if proj_qre.get("contractor_qre_after_65pct") is not None:
+                attr_rows.append(["Qualified Contractor QRE (65%)", _format_money(proj_qre["contractor_qre_after_65pct"])])
+            if proj_qre.get("supply_qre") is not None:
+                attr_rows.append(["Qualified Supply QRE", _format_money(proj_qre["supply_qre"])])
+            if proj_qre.get("cloud_qre") is not None:
+                attr_rows.append(["Qualified Cloud QRE", _format_money(proj_qre["cloud_qre"])])
+            total_proj = proj_qre.get("total_project_qre") or proj_qre.get("total_qre") or 0
+            if total_proj:
+                attr_rows.append(["Total Project QRE", _format_money(total_proj)])
+            if credit_attr.get("attribution_pct") is not None:
+                attr_rows.append(["Attribution % of Year QRE", f"{float(credit_attr['attribution_pct']):.2f}%"])
+            if credit_attr.get("proportional_credit") is not None:
+                attr_rows.append(["Proportional R&amp;D Credit", _format_money(credit_attr["proportional_credit"])])
+            if len(attr_rows) > 1:
+                from reportlab.platypus import Table as _T, TableStyle as _TS
+                at = _T(attr_rows, colWidths=[3.0*inch, 1.8*inch])
+                at.setStyle(_TS([
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1A5276")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#EAF2F8")]),
+                ]))
+                elements.append(at)
+                elements.append(Spacer(1, 0.1 * inch))
 
         elements.append(Spacer(1, 0.2 * inch))
 
@@ -476,7 +568,7 @@ def _create_project_qra_section(active_years: list) -> list:
             ("RIGHTPADDING",   (0, 0), (-1, -1), 6),
         ]))
 
-        elements.append(Paragraph(f"Tax Year {year_label}", h2_style))
+        elements.append(Paragraph(f"Tax Year {_safe(year_label)}", h2_style))
         elements.append(t)
         elements.append(Spacer(1, 0.2 * inch))
 
@@ -519,7 +611,7 @@ def _create_project_four_part_test(active_years: list) -> list:
         project_id = proj.get("project_id", "")
         project_name = _get_project_name(proj)
         elements.append(
-            Paragraph(f"Tax Year {year_label} \u2014 {project_id}: {project_name}", h2_style)
+            Paragraph(f"Tax Year {_safe(year_label)} \u2014 {_safe(project_id)}: {_safe(project_name)}", h2_style)
         )
 
         fpt = proj.get("four_part_test") or {}
@@ -611,7 +703,7 @@ def _create_project_employee_schedule(project_id: str, active_years: list) -> li
             elements.append(Spacer(1, 0.1 * inch))
             continue
 
-        elements.append(Paragraph(f"Tax Year {year_label}", h2_style))
+        elements.append(Paragraph(f"Tax Year {_safe(year_label)}", h2_style))
 
         # Header row uses _cell_hdr (bold white), data rows use _cell7 Paragraphs so
         # long job titles wrap within their cell instead of bleeding into W-2 Wages column.
@@ -687,11 +779,11 @@ def _create_project_employee_schedule(project_id: str, active_years: list) -> li
                 if narrative:
                     elements.append(
                         Paragraph(
-                            f"<b>{emp.get('employee_name', '')} — {emp.get('job_title', '')}</b>",
+                            f"<b>{_safe(emp.get('employee_name', ''))} \u2014 {_safe(emp.get('job_title', ''))}</b>",
                             normal_style,
                         )
                     )
-                    elements.append(Paragraph(narrative, normal_style))
+                    elements.append(Paragraph(_safe(narrative), normal_style))
                     elements.append(Spacer(1, 0.1 * inch))
             elements.append(Spacer(1, 0.1 * inch))
 
@@ -709,7 +801,7 @@ def _create_project_contractor_schedule(project_id: str, active_years: list) -> 
         if not contractors:
             continue
         any_data = True
-        elements.append(Paragraph(f"Tax Year {year_label}", h2_style))
+        elements.append(Paragraph(f"Tax Year {_safe(year_label)}", h2_style))
 
         data = [
             [_p("Contractor", _cell_hdr), _p("Description of Work", _cell_hdr),
@@ -774,7 +866,7 @@ def _create_project_supplies_schedule(project_id: str, active_years: list) -> li
         if not supplies:
             continue
         any_data = True
-        elements.append(Paragraph(f"Tax Year {year_label}", h2_style))
+        elements.append(Paragraph(f"Tax Year {_safe(year_label)}", h2_style))
 
         data = [
             [_p("Description", _cell_hdr), _p("Vendor", _cell_hdr),
@@ -863,7 +955,7 @@ def _create_project_credit_attribution(
             continue
 
         elements.append(
-            Paragraph(f"10A. ASC Computation Worksheet — Tax Year {year_label}", h2_style)
+            Paragraph(f"10A. ASC Computation Worksheet — Tax Year {_safe(year_label)}", h2_style)
         )
 
         # Build a context dict that create_asc_worksheet() expects.
@@ -1137,6 +1229,18 @@ def build_single_project_pdf(
 
     # 9. Assumptions & Disclosures
     story.extend(create_assumptions_section(latest_yr_data))
+
+    # 12. Audit Compliance Overview (enriched JSON fields — rendered per active year)
+    for year_label, yr_data, _ in active_years:
+        elems = create_audit_compliance_section(yr_data)
+        if elems:
+            story.append(Paragraph(f"Tax Year {year_label} — Audit Compliance Overview", h1_style))
+            story.extend(elems)
+
+    # 13. Research Methodology & Compliance Analysis (enriched JSON fields — latest year)
+    rm_elems = create_research_methodology_section(latest_yr_data)
+    if rm_elems:
+        story.extend(rm_elems)
 
     doc.build(
         story,

@@ -1,0 +1,1153 @@
+{
+    "schema_version": "1.0.0",
+    "document_type": "RD_Study_Pipeline_Edge_Case_Specification",
+    "purpose": "This document defines every edge case, missing scenario, and conditional logic that the TaxVantage R&D study pipeline must handle. Each entry specifies: the scenario, the relevant IRC/Treasury Regulation authority, the pipeline field(s) required to capture it, the correct computation or treatment, and the audit risk if the scenario is ignored. Organised by entity type. NovaPulse-specific observations are flagged where a case is directly triggered by the live study data.",
+    "how_to_use": "For each edge_case entry: (1) add the listed 'pipeline_fields_required' to your data model if not already present; (2) implement the 'computation_or_treatment' logic in your calculation engine; (3) surface the 'audit_risk_if_ignored' as a validation warning when relevant conditions are detected; (4) flag cases marked 'novapulse_triggered: true' for immediate action.",
+    "edge_cases": {
+      "WAGE_AND_EMPLOYEE": {
+        "section_title": "Wage QREs — IRC §41(b)(2)(B) Edge Cases",
+        "irc_anchor": "IRC §41(b)(2)(B), Treas. Reg. §1.41-2(b)",
+        "cases": [
+          {
+            "id": "W-01",
+            "title": "Equity Compensation Excluded from QRE Wages",
+            "scenario": "An employee receives RSUs, stock options, or phantom equity that vests during the tax year. These amounts may appear in Box 1 of W-2 on exercise or vesting, or may be in Box 12. They do not constitute 'wages' for §41 purposes if they are not reasonable compensation for services rendered in the year.",
+            "authority": "IRC §41(b)(2)(B) — 'wages' as defined in §3401(a); equity comp on exercise is compensation but must be tested for inclusion",
+            "pipeline_fields_required": [
+              "employees[].w2_equity_compensation_amount",
+              "employees[].w2_box1_less_equity",
+              "employees[].equity_comp_types",
+              "employees[].equity_comp_excluded_from_qre"
+            ],
+            "computation_or_treatment": "The QRE wage base should use W-2 Box 1 wages LESS any equity compensation included therein (RSU vesting income, option exercise spread). The pipeline must prompt for disclosure of equity awards and subtract from the QRE wage base. Many studies incorrectly use raw Box 1 which overstates wages.",
+            "audit_risk_if_ignored": "HIGH — IRS can request stock compensation schedules; RSU income in Box 1 that's included in QRE is a clear overstatement",
+            "novapulse_triggered": false,
+            "novapulse_note": "No equity compensation disclosed for any NovaPulse employee. Pipeline should prompt to confirm annually."
+          },
+          {
+            "id": "W-02",
+            "title": "Severance Pay Excluded",
+            "scenario": "An employee is terminated and receives severance. The severance year may be different from the year of R&D activity. Severance is compensation for leaving, not for services rendered.",
+            "authority": "IRC §41(b)(2)(B) — wages must be for 'services performed' in connection with qualified research",
+            "pipeline_fields_required": [
+              "employees[].termination_date",
+              "employees[].severance_amount",
+              "employees[].w2_box1_less_severance"
+            ],
+            "computation_or_treatment": "Severance must be excluded from QRE wage base. If employee was terminated and their W-2 includes severance, the pipeline must split pre-termination wages (potentially qualified) from severance (never qualified).",
+            "audit_risk_if_ignored": "MEDIUM — Severance can be large; including it in QRE overstates wages for a year the employee may not have done research",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "W-03",
+            "title": "Signing Bonus — Year of Payment vs. Year of Service",
+            "scenario": "A signing bonus is paid in January of Year 1 but compensates the employee for agreeing to join. If the employee's R&D work begins in Year 1, the bonus may qualify. However, if it is paid before any research begins, or is structured as deferred comp, the timing is complex.",
+            "authority": "Treas. Reg. §1.41-2(b)(1) — wages includible in gross income",
+            "pipeline_fields_required": [
+              "employees[].signing_bonus_amount",
+              "employees[].signing_bonus_payment_date",
+              "employees[].signing_bonus_qre_eligible",
+              "employees[].signing_bonus_eligibility_rationale"
+            ],
+            "computation_or_treatment": "Include signing bonus in QRE wages only if paid in the same tax year the employee performed qualified research, and the bonus is includible in gross income in that year. Exclude if paid before R&D commenced or deferred.",
+            "audit_risk_if_ignored": "MEDIUM",
+            "novapulse_triggered": true,
+            "novapulse_note": "Aiden Park (E006) joined January 2024. Pipeline must confirm whether any signing bonus was paid and whether it is in his $148,000 W-2 Box 1."
+          },
+          {
+            "id": "W-04",
+            "title": "Mid-Year Role Change — R&D to Production or Vice Versa",
+            "scenario": "An employee transitions from a qualified R&D role to a production/operations role (or vice versa) partway through the year. The qualified percentage must reflect only the portion of the year spent in qualified activities.",
+            "authority": "Treas. Reg. §1.41-4(a)(3)(i) — time spent directly engaging in qualified research",
+            "pipeline_fields_required": [
+              "employees[].role_change_date",
+              "employees[].role_before_change",
+              "employees[].role_after_change",
+              "employees[].qualified_percentage_before_change",
+              "employees[].qualified_percentage_after_change",
+              "employees[].blended_qualified_percentage"
+            ],
+            "computation_or_treatment": "Compute a time-weighted blended qualified_percentage: (days_in_role_1 / total_days × qual_pct_1) + (days_in_role_2 / total_days × qual_pct_2). Do not apply a single flat percentage to the full year.",
+            "audit_risk_if_ignored": "HIGH — Using the R&D-era percentage for the full year when an employee moved to production overstates QRE",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "W-05",
+            "title": "Employee on FMLA or Extended Medical Leave",
+            "scenario": "An employee takes FMLA, disability, or extended unpaid leave during the year. Wages paid during leave (employer-paid leave, short-term disability) may be in W-2 Box 1 but are not compensation for qualified research.",
+            "authority": "IRC §41(b)(2)(B) — services must be 'performed' in connection with qualified research",
+            "pipeline_fields_required": [
+              "employees[].leave_periods",
+              "employees[].leave_type",
+              "employees[].leave_pay_included_in_w2",
+              "employees[].leave_pay_amount",
+              "employees[].w2_box1_less_leave_pay"
+            ],
+            "computation_or_treatment": "Exclude leave-period wages from the QRE wage base. The qualified_percentage should be applied to active working wages only. Alternatively, reduce the qualified percentage to reflect the leave period.",
+            "audit_risk_if_ignored": "MEDIUM",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "W-06",
+            "title": "Leased Employees / PEO / EOR Arrangements",
+            "scenario": "An employee is technically employed by a Professional Employer Organisation (PEO) or Employer of Record (EOR) but works full-time for the taxpayer. The W-2 is issued by the PEO, not the taxpayer. IRC §41 requires wages paid by the taxpayer.",
+            "authority": "IRC §41(b)(2)(B) — wages paid by the taxpayer to an employee; IRC §414(n) leased employee rules",
+            "pipeline_fields_required": [
+              "employees[].employment_type",
+              "employees[].peo_name",
+              "employees[].leased_employee_irc414n_analysis",
+              "employees[].wages_paid_by_taxpayer_directly",
+              "employees[].reimbursement_agreement_reference"
+            ],
+            "computation_or_treatment": "If the taxpayer reimburses the PEO for wages, the reimbursed wage amount qualifies provided the §414(n) leased employee rules are satisfied. The pipeline must capture the legal employer name and confirm the economic reality test. W-2 issuer ≠ taxpayer is a red flag requiring documentation.",
+            "audit_risk_if_ignored": "HIGH — IRS may disallow wages not issued on the taxpayer's own W-2 without §414(n) analysis",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "W-07",
+            "title": "Remote Workers in Different States — Multi-State Wage Apportionment",
+            "scenario": "An employee lives and works remotely in State A but the employer is incorporated in State B. State R&D credit eligibility may depend on where the research is physically performed, not where the employer is located.",
+            "authority": "State-specific — varies; most states require research performed within the state",
+            "pipeline_fields_required": [
+              "employees[].work_state",
+              "employees[].residence_state",
+              "employees[].work_location_confirmed",
+              "employees[].pct_work_in_each_state"
+            ],
+            "computation_or_treatment": "For federal credit: location of research is irrelevant as long as it is within the US. For state credits: only wages attributable to in-state research qualify. The pipeline must track work state separately from employer state for state credit apportionment.",
+            "audit_risk_if_ignored": "MEDIUM (federal) / HIGH (state) — state R&D credits based on all wages when only in-state wages qualify is a common overstatement",
+            "novapulse_triggered": true,
+            "novapulse_note": "NovaPulse added an Austin, TX site in 2024. If any Denver-based employees travelled to Austin for P004 pilot work, their in-TX research time may qualify for different state treatment. Confirm all 2024 employee work locations."
+          },
+          {
+            "id": "W-08",
+            "title": "Bonus Paid in January for Prior-Year R&D Work",
+            "scenario": "A year-end performance bonus is approved in December but paid in January of the next year. Under the cash method, it is income in the year paid; under accrual, it may be deductible and includible in the prior year. The W-2 year determines which year's QRE it enters.",
+            "authority": "Treas. Reg. §1.41-2(b)(1) — wages includible in gross income for the taxable year",
+            "pipeline_fields_required": [
+              "employees[].bonus_payment_date",
+              "employees[].bonus_accrual_year",
+              "employees[].bonus_w2_year",
+              "employees[].bonus_qre_year"
+            ],
+            "computation_or_treatment": "The QRE year for a bonus is the year it appears on the W-2 (the year it is includible in the employee's gross income), regardless of when the R&D services were rendered. Pipeline must use W-2 year, not accrual year, for bonus QRE assignment.",
+            "audit_risk_if_ignored": "MEDIUM — Double-counting if bonus appears on Year 2 W-2 but is allocated to Year 1 QREs",
+            "novapulse_triggered": false,
+            "novapulse_note": "qre_calculation_rules.include_bonus_in_wages is true. Pipeline must confirm bonus W-2 year matches the tax year being studied."
+          },
+          {
+            "id": "W-09",
+            "title": "1099 Contractor Misclassified as Employee",
+            "scenario": "A worker is paid on a 1099 but performs activities that would qualify as an employee for §41 purposes. Conversely, a true employee may be misclassified as a contractor, meaning their wages would be subject to the 65% contractor rule instead of 100% wage treatment.",
+            "authority": "IRC §41(b)(2)(B) vs. §41(b)(3) — wage vs. contract research treatment",
+            "pipeline_fields_required": [
+              "employees[].worker_classification",
+              "employees[].classification_basis",
+              "employees[].reclassification_risk_flag"
+            ],
+            "computation_or_treatment": "Pipeline must prompt the user to confirm each worker's legal classification. A worker on 1099 receives only 65% credit treatment. If reclassified as employee, they receive 100% wage treatment. Flag any worker whose role description sounds like an employee (fixed hours, equipment provided, single client).",
+            "audit_risk_if_ignored": "HIGH — IRS can challenge classification; understating contractor treatment (using 100% instead of 65%) is an overstatement",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "W-10",
+            "title": "Deferred Compensation — §409A and §83(b) Timing",
+            "scenario": "Deferred compensation under a NQDC plan is includible in gross income (and thus in W-2 Box 1) in the year of distribution, not the year of service. An employee who deferred compensation for 2019-2022 R&D services and receives a distribution in 2024 will show the deferred amount in the 2024 W-2.",
+            "authority": "IRC §409A; Treas. Reg. §1.41-2(b)(1) — W-2 year controls",
+            "pipeline_fields_required": [
+              "employees[].deferred_compensation_flag",
+              "employees[].deferred_comp_distribution_year",
+              "employees[].deferred_comp_service_year",
+              "employees[].deferred_comp_amount_in_current_w2",
+              "employees[].deferred_comp_excluded_from_qre"
+            ],
+            "computation_or_treatment": "Deferred comp that appears on the current year W-2 for services rendered in prior years must be excluded from current-year QREs. It cannot be allocated back to prior years either (those returns are closed). The pipeline must identify and exclude prior-year service deferred comp from the current year's QRE base.",
+            "audit_risk_if_ignored": "HIGH — Including deferred comp for prior-year services in current-year QRE is a double-benefit (the R&D services were already in prior QREs or were not qualified)",
+            "novapulse_triggered": false
+          }
+        ]
+      },
+      "PROJECT_AND_BUSINESS_COMPONENT": {
+        "section_title": "Project / Business Component Edge Cases",
+        "irc_anchor": "IRC §41(d)(1), §41(d)(2), Treas. Reg. §1.41-4",
+        "cases": [
+          {
+            "id": "P-01",
+            "title": "Failed or Abandoned Project — Still Qualifies",
+            "scenario": "A research project is abandoned partway through the year because the technical approach proved unworkable. The project never produces a commercial result.",
+            "authority": "Treas. Reg. §1.41-4(a)(3)(ii) — qualified research does not require a successful result",
+            "pipeline_fields_required": [
+              "rd_projects[].abandoned",
+              "rd_projects[].abandonment_date",
+              "rd_projects[].abandonment_reason",
+              "rd_projects[].qre_pre_abandonment",
+              "rd_projects[].qre_post_abandonment"
+            ],
+            "computation_or_treatment": "QREs incurred before abandonment are fully qualified provided the four-part test was satisfied at the time of expenditure. QREs after abandonment (wind-down, documentation, asset disposal) are non-qualified. The pipeline must split pre/post abandonment and zero out post-abandonment QREs.",
+            "audit_risk_if_ignored": "MEDIUM — Including post-abandonment costs (legal, disposal, documentation) as qualified research overstates QRE",
+            "novapulse_triggered": false,
+            "novapulse_note": "DDPG and SAC RL algorithms failed in 2024. These are failures within P004, not abandoned projects — the experimentation itself qualifies. This is correct. Pipeline must distinguish failed experiments (qualified) from abandoned projects (partial)."
+          },
+          {
+            "id": "P-02",
+            "title": "Post-Commercial Production — Research After Product Enters Production",
+            "scenario": "A company begins selling Product v1.0 in Q2 while simultaneously conducting research on v2.0 features. Some research may also touch the production v1.0 (quality improvements, defect resolution). The production-stage activities are not qualified research.",
+            "authority": "IRC §41(d)(4)(A) exclusion for funded research; Treas. Reg. §1.41-4(c)(2) — production activities excluded",
+            "pipeline_fields_required": [
+              "rd_projects[].commercial_production_start_date",
+              "rd_projects[].production_version_label",
+              "rd_projects[].post_production_activities_excluded",
+              "prototype_production_boundary"
+            ],
+            "computation_or_treatment": "Once a product reaches commercial production, only research on genuinely new capabilities or improvements with their own technical uncertainty qualifies. Troubleshooting production defects, customer support, and maintenance are excluded. The pipeline needs a production_start_date per project and a rule that flags any QRE claimed after that date for review.",
+            "audit_risk_if_ignored": "HIGH — One of the most common IRS disallowances; production activities disguised as R&D",
+            "novapulse_triggered": true,
+            "novapulse_note": "P001 FL firmware deployed to 8 customer sites Q4 2024. Q4 2024 operations for P001 are production, not R&D. prototype_production_boundary field exists but pipeline must enforce it computationally — auto-zero QREs after production_start_date."
+          },
+          {
+            "id": "P-03",
+            "title": "Internal-Use Software Later Commercialised",
+            "scenario": "Software originally developed for internal operations is later licensed or sold to external customers. At development time it may have been subject to the elevated internal-use software test (high threshold of innovation, significant economic risk, not commercially available). Upon commercialisation, the classification changes retroactively.",
+            "authority": "Treas. Reg. §1.41-4(c)(6) — IUS vs. commercial sale software",
+            "pipeline_fields_required": [
+              "rd_projects[].original_use_classification",
+              "rd_projects[].commercialisation_date",
+              "rd_projects[].ius_test_applied_originally",
+              "rd_projects[].ius_high_threshold_met",
+              "rd_projects[].reclassification_on_commercialisation"
+            ],
+            "computation_or_treatment": "If software was originally IUS and failed the elevated test, those prior-year QREs cannot be retroactively claimed once the software is commercialised. If it passed the elevated test, the prior-year credits stand regardless. On commercialisation, future years automatically use the standard §41(d)(1) test.",
+            "audit_risk_if_ignored": "HIGH — IRS specifically targets software credits; failing to apply IUS test when required is a common audit trigger",
+            "novapulse_triggered": false,
+            "novapulse_note": "All NovaPulse software is externally licensed (confirmed via is_commercial_sale_software: true). IUS test does not apply. Pipeline must re-verify this classification each year."
+          },
+          {
+            "id": "P-04",
+            "title": "Customer NRE Contract — Funded Research Trigger",
+            "scenario": "A customer pays a non-recurring engineering (NRE) fee for the company to develop a custom feature. The NRE payment may constitute 'funding' under §41(d)(4)(A), tainting the entire project or the funded portion.",
+            "authority": "IRC §41(d)(4)(A); Treas. Reg. §1.41-4(d)(1) — funded research exclusion",
+            "pipeline_fields_required": [
+              "rd_projects[].customer_nre_contracts",
+              "rd_projects[].nre_amount_received",
+              "rd_projects[].nre_funded_research_analysis",
+              "rd_projects[].nre_financial_risk_retained_by_taxpayer",
+              "rd_projects[].nre_ip_ownership",
+              "rd_projects[].nre_qualified_pct_after_exclusion"
+            ],
+            "computation_or_treatment": "A payment constitutes 'funded research' if: (1) the customer bears the financial risk of failure (i.e. taxpayer gets paid regardless), OR (2) the customer retains rights in the research. If funded, the QREs attributable to the funded portion are excluded. If the taxpayer retains IP and bears risk of failure, it is NOT funded research.",
+            "audit_risk_if_ignored": "CRITICAL — Funded research is a complete disqualification; IRS examines customer contracts closely",
+            "novapulse_triggered": true,
+            "novapulse_note": "Austin utility pilot: customer provided site access, NovaPulse bore technical risk, NovaPulse retains all IP. Not funded research — correctly documented. Pipeline must enforce NRE contract review for any year a customer makes milestone or feature-specific payments."
+          },
+          {
+            "id": "P-05",
+            "title": "Joint Development Agreement — Credit Ownership",
+            "scenario": "Two companies jointly develop a technology. Each may claim the credit on the QREs it independently incurred, but the allocation of shared costs and IP rights must be documented.",
+            "authority": "IRC §41(b)(3) — contract research; Treas. Reg. §1.41-2(e) — funded research interaction",
+            "pipeline_fields_required": [
+              "rd_projects[].joint_development_agreement",
+              "rd_projects[].jda_counterparty",
+              "rd_projects[].jda_cost_sharing_pct",
+              "rd_projects[].jda_ip_ownership",
+              "rd_projects[].jda_taxpayer_qre_share"
+            ],
+            "computation_or_treatment": "Each party claims only its own QREs. Payments to the other party for their work are contractor QREs (65% rule). Payments received from the other party reduce the claiming party's net QREs. The pipeline must handle the bilateral nature of JDAs.",
+            "audit_risk_if_ignored": "HIGH — Double-claiming the same QREs across two entities in a JDA",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "P-06",
+            "title": "Patent Applications as Corroborating Evidence",
+            "scenario": "Filed patent applications and granted patents are strong contemporaneous evidence of qualified research — they include claims, prior art searches, and technical descriptions dated during the research period.",
+            "authority": "Not statutory, but IRS Publication 946 and audit guidance consistently cite patent applications as best-in-class evidence",
+            "pipeline_fields_required": [
+              "rd_projects[].patent_applications",
+              "rd_projects[].patent_application_numbers",
+              "rd_projects[].patent_filing_dates",
+              "rd_projects[].patents_granted"
+            ],
+            "computation_or_treatment": "No computation — purely evidentiary. The pipeline should prompt for patent applications on every project. A filed patent application covering the research period is a near-audit-proof record of contemporaneous R&D. Missing this field leaves value on the table.",
+            "audit_risk_if_ignored": "LOW (on credit), HIGH (on audit defence) — not claiming the credit is not the risk; failing to document it with patents when they exist weakens the audit position unnecessarily",
+            "novapulse_triggered": true,
+            "novapulse_note": "NovaPulse has federated learning BMS, MPC balancing, and SoH estimation innovations that may be patent-eligible. Pipeline must ask for patent applications across all four business components."
+          },
+          {
+            "id": "P-07",
+            "title": "Negative Research Results — Still Qualified",
+            "scenario": "An experiment conclusively demonstrates that a hypothesis was wrong. The project produces no usable result. Some preparers incorrectly exclude failed experiments from QREs.",
+            "authority": "Treas. Reg. §1.41-4(a)(3)(ii) — 'qualified research' does not require success",
+            "pipeline_fields_required": [
+              "rd_projects[].experiments_with_negative_results",
+              "rd_projects[].negative_result_documentation"
+            ],
+            "computation_or_treatment": "Failed experiments are fully qualified provided the process of experimentation was genuine. The pipeline should not have any logic that reduces QREs based on whether a hypothesis succeeded or failed. Failure documentation (test reports showing negative results) is actually stronger audit evidence than success.",
+            "audit_risk_if_ignored": "LOW — Excluding negative results understates QRE, hurting the taxpayer",
+            "novapulse_triggered": true,
+            "novapulse_note": "DDPG/SAC failures (P004), initial LSTM rejection (P001-2022), initial synthetic augmentation failure (P003-2023) are all correctly kept in QREs. Pipeline must ensure that failed_iterations text in technical_summary maps to included QREs, not excluded ones."
+          },
+          {
+            "id": "P-08",
+            "title": "Multi-Year Project Where Uncertainty Resolved in Prior Year",
+            "scenario": "A project's technical uncertainty was resolved by Year 2. The company continues development work in Year 3 that is now engineering execution, not experimentation. Year 3 QREs may not qualify.",
+            "authority": "IRC §41(d)(1)(C) — uncertainty must exist at the time of expenditure",
+            "pipeline_fields_required": [
+              "rd_projects[].uncertainty_resolution_date",
+              "rd_projects[].post_resolution_activities_description",
+              "rd_projects[].post_resolution_activities_qualify",
+              "rd_projects[].new_uncertainty_for_continued_research"
+            ],
+            "computation_or_treatment": "Once the primary uncertainty is resolved, subsequent work must be tested for NEW uncertainty. If Year 3 work introduces a new sub-uncertainty (e.g., scale-up uncertainty), it qualifies under that new uncertainty. If Year 3 is pure engineering execution of a solved design, it does not qualify. The pipeline must require a new_uncertainty statement for any ongoing project past its resolution date.",
+            "audit_risk_if_ignored": "HIGH — A very common IRS challenge: 'the uncertainty was resolved; why are you still claiming R&D?'",
+            "novapulse_triggered": true,
+            "novapulse_note": "P001 BMS runs 2022-2024. Each year introduces a genuinely new uncertainty (EIS→MPC→FL). Pipeline must enforce that each year's QRA documents a distinct new uncertainty, not just continuation of prior work."
+          }
+        ]
+      },
+      "SUPPLY_QRE": {
+        "section_title": "Supply QRE Edge Cases — IRC §41(b)(2)(C)",
+        "irc_anchor": "IRC §41(b)(2)(C), Treas. Reg. §1.41-2(b)(2)",
+        "cases": [
+          {
+            "id": "S-01",
+            "title": "Supplies Purchased in Prior Year, Consumed in Current Year",
+            "scenario": "A company buys lab materials in December of Year 1 and uses them in experiments in January of Year 2. Under accrual accounting the cost may be deducted (and counted as QRE) in Year 1. Under cash accounting, or if the supply is held in inventory, the timing may differ.",
+            "authority": "Treas. Reg. §1.41-2(b)(2) — amounts paid or incurred for supplies",
+            "pipeline_fields_required": [
+              "supplies[].date_of_purchase",
+              "supplies[].date_of_consumption",
+              "supplies[].accounting_method",
+              "supplies[].qre_year_assigned",
+              "supplies[].cross_year_supply_flag"
+            ],
+            "computation_or_treatment": "The QRE year is the year the supply cost is 'paid or incurred' under the taxpayer's accounting method — not necessarily the year it is consumed. For accrual-basis taxpayers, the cost is incurred when purchased. For cash-basis, when paid. The pipeline must capture both purchase date and consumption date and apply the correct accounting method rule.",
+            "audit_risk_if_ignored": "MEDIUM — Double-claiming if a prior-year purchase is also included in the current year",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "S-02",
+            "title": "Prototype Converted to Customer Demo — Loses Qualified Supply Status",
+            "scenario": "A prototype device built using qualified supplies during R&D is later handed to a customer as a sales demonstration unit. The prototype's supply costs qualified during R&D. But if the unit is transferred, it may now have a commercial purpose that retroactively taints the supply QRE.",
+            "authority": "Treas. Reg. §1.41-2(b)(2) — supplies used in qualified research activities",
+            "pipeline_fields_required": [
+              "supplies[].prototype_id",
+              "supplies[].prototype_disposition",
+              "supplies[].converted_to_commercial_use",
+              "supplies[].commercial_use_date",
+              "supplies[].supply_qre_status_after_disposition"
+            ],
+            "computation_or_treatment": "If prototype materials were genuinely consumed (destroyed, non-recoverable) in the R&D process, disposition of the unit does not affect the QRE. If the materials became the unit itself and the unit was sold/gifted, the tax treatment depends on whether the supply was 'used and consumed' in research. A prototype that ships to a customer was not fully consumed.",
+            "audit_risk_if_ignored": "MEDIUM — IRS may argue prototype materials not consumed if the prototype was later sold",
+            "novapulse_triggered": true,
+            "novapulse_note": "Sierra Wireless routers (S004) and NVIDIA Jetson modules (S003) are reusable hardware. If deployed to the 8 FL customer sites in Q4 2024, they were not consumed — they became production assets. Pipeline must track prototype disposition for all hardware supply items."
+          },
+          {
+            "id": "S-03",
+            "title": "Scientific Database Subscriptions — Supply vs. Cloud vs. Non-Qualified",
+            "scenario": "A company pays for subscriptions to scientific literature databases (e.g., IEEE Xplore, Web of Science), simulation software (e.g., MATLAB, COMSOL), or ML platform tools (e.g., Weights & Biases). Classification as supply, cloud compute, or non-qualified varies.",
+            "authority": "Treas. Reg. §1.41-2(b)(2) — supplies; IRC §41(b)(2)(B) note — must be used in research, not general operations",
+            "pipeline_fields_required": [
+              "supplies[].subscription_type",
+              "supplies[].subscription_research_use_pct",
+              "supplies[].subscription_vs_cloud_classification",
+              "supplies[].subscription_vendor",
+              "supplies[].subscription_period"
+            ],
+            "computation_or_treatment": "Literature database subscriptions: non-qualified (gathering information, not conducting research). Simulation software used directly in experiments: qualified supply. Cloud ML platforms (AWS SageMaker, Azure ML): qualified cloud compute. The pipeline must classify each subscription explicitly rather than treating all software costs uniformly.",
+            "audit_risk_if_ignored": "MEDIUM — Database subscriptions are a common aggressive inclusion; IRS views them as general business expenses",
+            "novapulse_triggered": false,
+            "novapulse_note": "CALCE and NASA PCOE data access — these are dataset licenses, not subscriptions. Classification as qualified supply is supportable if the datasets were directly consumed in model training (not just used for background research)."
+          },
+          {
+            "id": "S-04",
+            "title": "Dual-Use Supplies — Shared Between R&D and Production",
+            "scenario": "A chemical or material is purchased in bulk and used partly in qualified research experiments and partly in production runs. The 80/20 rule in Treas. Reg. §1.41-2(b)(2) allows a simplified approach.",
+            "authority": "Treas. Reg. §1.41-2(b)(2) — 80/20 rule for predominant use",
+            "pipeline_fields_required": [
+              "supplies[].dual_use",
+              "supplies[].research_use_pct",
+              "supplies[].production_use_pct",
+              "supplies[].predominant_use_test",
+              "supplies[].dual_use_allocation_method"
+            ],
+            "computation_or_treatment": "If >80% of the supply is used in qualified research, the full cost qualifies (80/20 safe harbour). If <80% but >20%, an actual-use allocation applies. If <20% research use, the supply is entirely non-qualified. The pipeline must capture dual-use supplies and apply the correct rule rather than defaulting to 100% qualified.",
+            "audit_risk_if_ignored": "HIGH — Claiming 100% of a shared supply with no dual-use analysis is a top IRS audit finding",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "S-05",
+            "title": "Depreciable Equipment Misclassified as Supplies",
+            "scenario": "Test equipment, instruments, computers, or modules with a useful life greater than one year are depreciable property under §168. They are NOT qualified supplies under §41(b)(2)(C) unless they are genuinely consumed and destroyed in the research process.",
+            "authority": "IRC §41(b)(2)(C) — 'supplies' excludes land, property of a character subject to depreciation",
+            "pipeline_fields_required": [
+              "supplies[].useful_life_estimate_years",
+              "supplies[].depreciable_property_check",
+              "supplies[].physically_destroyed_in_research",
+              "supplies[].retained_after_research",
+              "supplies[].depreciation_schedule_reference"
+            ],
+            "computation_or_treatment": "Any item with a useful life >1 year that is not physically destroyed in research must be treated as capital equipment under §168, not a §41 qualified supply. The pipeline must flag any supply with a unit cost above a configurable threshold (e.g. $500) for depreciable property review.",
+            "audit_risk_if_ignored": "CRITICAL — Including depreciable equipment as supplies is one of the most common and easily identified IRS disallowances",
+            "novapulse_triggered": true,
+            "novapulse_note": "NVIDIA Jetson Orin NX modules at $2,800/unit (S003) and Sierra Wireless RV55 routers at $1,200/unit (S004) are almost certainly depreciable. Pipeline must auto-flag any supply line where unit_cost > $500 and useful_life_estimate_years > 1 as DEPRECIABLE PROPERTY REVIEW."
+          }
+        ]
+      },
+      "CLOUD_AND_SAAS": {
+        "section_title": "Cloud Computing & SaaS QRE Edge Cases",
+        "irc_anchor": "IRC §41(b)(2) as interpreted by Rev. Proc. 2023-11 and IRS guidance",
+        "cases": [
+          {
+            "id": "C-01",
+            "title": "GPU Compute Used for Both R&D Training and Production Inference",
+            "scenario": "The same AWS account or Azure subscription is used to train ML models (qualified research) and to run production inference serving customer requests (not qualified). A single invoice covers both.",
+            "authority": "IRC §41(b)(2) — only amounts directly related to qualified research qualify",
+            "pipeline_fields_required": [
+              "cloud_computing[].research_use_pct",
+              "cloud_computing[].production_inference_pct",
+              "cloud_computing[].cost_allocation_method",
+              "cloud_computing[].cloud_cost_tagging_evidence"
+            ],
+            "computation_or_treatment": "The pipeline must split cloud invoices between R&D and production use. The most defensible method is cloud cost tagging (AWS Cost Explorer tags, Azure Cost Management tags). Without tagging, a reasonable allocation based on compute hours per workload is required. Never include production inference compute in qualified cloud QRE.",
+            "audit_risk_if_ignored": "HIGH — Production inference is a large and growing cost; including it in QRE can be substantial",
+            "novapulse_triggered": true,
+            "novapulse_note": "AWS C001 and Azure C002 are claimed as 100% qualified for research. Pipeline must verify that production SoH inference serving live fleet customers (P003) does not share the same AWS account/billing as research training. Add cloud_cost_tagging_evidence field."
+          },
+          {
+            "id": "C-02",
+            "title": "Foreign Cloud Region Accidentally Used",
+            "scenario": "A developer inadvertently runs a training job on a foreign AWS region (e.g., eu-west-1, ap-southeast-1) due to cost optimisation or availability. Those compute costs are excluded under §41(d)(4)(F).",
+            "authority": "IRC §41(d)(4)(F) — research conducted outside the United States excluded",
+            "pipeline_fields_required": [
+              "cloud_computing[].regions_used",
+              "cloud_computing[].foreign_region_amount",
+              "cloud_computing[].foreign_region_exclusion_applied",
+              "cloud_computing[].us_region_amount"
+            ],
+            "computation_or_treatment": "The pipeline must require a region-level breakdown of cloud costs, not just a single billing total. Any spend on non-US regions is excluded. Cloud providers offer billing reports by region — require this as supporting documentation.",
+            "audit_risk_if_ignored": "MEDIUM — Small amounts but a clear statutory exclusion that IRS can verify from cloud billing records",
+            "novapulse_triggered": false,
+            "novapulse_note": "2024 study notes US-East-1 and US-West-2 for AWS, East US for Azure. Pipeline must retrieve actual region-level billing breakdowns, not just accept a confirmation."
+          },
+          {
+            "id": "C-03",
+            "title": "Pre-Production Cloud Infrastructure — Not Qualified",
+            "scenario": "A company spends on cloud infrastructure setup (VPCs, load balancers, production databases, CI/CD pipelines) in preparation for product launch. These are not R&D activities.",
+            "authority": "IRC §41(d)(1) — research must aim at elimination of uncertainty; infrastructure setup is execution",
+            "pipeline_fields_required": [
+              "cloud_computing[].infrastructure_setup_excluded",
+              "cloud_computing[].production_infrastructure_amount",
+              "cloud_computing[].research_compute_amount"
+            ],
+            "computation_or_treatment": "Cloud spend must be categorised at the workload level. Research training jobs: qualified. Production database hosting: non-qualified. DevOps/CI/CD pipelines: non-qualified unless directly running research experiments. The pipeline must not accept an entire cloud bill as qualified without workload-level breakdown.",
+            "audit_risk_if_ignored": "HIGH — Infrastructure costs can dwarf actual research compute",
+            "novapulse_triggered": false
+          }
+        ]
+      },
+      "CONTRACTOR_QRE": {
+        "section_title": "Contract Research QRE Edge Cases — IRC §41(b)(3)",
+        "irc_anchor": "IRC §41(b)(3), Treas. Reg. §1.41-2(e)",
+        "cases": [
+          {
+            "id": "CR-01",
+            "title": "Foreign Contractor — Fully Excluded",
+            "scenario": "A contractor (individual or firm) performs research outside the United States. Under IRC §41(b)(3)(C), amounts paid to a foreign person for research conducted outside the US are not qualified contract research expenditures.",
+            "authority": "IRC §41(b)(3)(C) — research must be performed in the US",
+            "pipeline_fields_required": [
+              "contractors[].contractor_country",
+              "contractors[].work_performed_country",
+              "contractors[].foreign_contractor_exclusion_applied",
+              "contractors[].eligible_amount_after_exclusion"
+            ],
+            "computation_or_treatment": "If the contractor performs work outside the US, the eligible QRE is $0 regardless of the 65% rule. The pipeline must require work_performed_country for every contractor and auto-zero the QRE for any non-US work. Note: a US-based contractor who outsources to a foreign sub-contractor triggers the same analysis.",
+            "audit_risk_if_ignored": "CRITICAL — Foreign contract research is a complete disqualification; IRS verifies contractor location from contracts and SOWs",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "CR-02",
+            "title": "Contractor Retaining IP Rights — Disqualifies the Payment",
+            "scenario": "A contractor performs research but retains IP rights in the results (e.g., retains a license-back, co-inventor rights, or right to use findings independently). The taxpayer must bear the financial risk AND retain substantially all rights.",
+            "authority": "Treas. Reg. §1.41-2(e)(1) — taxpayer must bear financial risk and retain all rights in the research",
+            "pipeline_fields_required": [
+              "contractors[].rights_and_risk.contractor_retains_no_independent_rights",
+              "contractors[].rights_and_risk.license_back_granted_to_contractor",
+              "contractors[].rights_and_risk.ip_assignment_clause_reference",
+              "contractors[].rights_and_risk.contractor_co_inventor_risk"
+            ],
+            "computation_or_treatment": "If the contractor retains ANY independent IP rights, the payment is disqualified as contract research QRE. The pipeline must require explicit confirmation that the IP assignment clause grants all rights to the taxpayer with no license-back or retained rights by the contractor. Flag any SOW that does not include an explicit work-for-hire / IP assignment clause.",
+            "audit_risk_if_ignored": "CRITICAL — Disqualifies 100% of the contractor's QRE; IRS regularly reviews contractor agreements",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "CR-03",
+            "title": "University / Non-Profit Contractor — Different 65% Treatment",
+            "scenario": "Research paid to a university, college, or non-profit scientific research organisation may qualify under IRC §41(b)(3)(C)(ii) as 'energy research' paid to a qualified organisation at a different rate, OR under the standard 65% rule if the research is not energy-related.",
+            "authority": "IRC §41(b)(3)(C)(ii) — qualified research organisations; IRC §41(e) — energy research credit",
+            "pipeline_fields_required": [
+              "contractors[].contractor_type",
+              "contractors[].is_qualified_research_organisation",
+              "contractors[].university_name",
+              "contractors[].research_type_energy_or_general",
+              "contractors[].applicable_credit_rate"
+            ],
+            "computation_or_treatment": "For general R&D paid to a university: standard 65% rule applies. For energy research paid to a qualified energy research consortium: different rules under §41(e). Pipeline must classify contractor type and apply the correct rate and rule.",
+            "audit_risk_if_ignored": "MEDIUM — Under-claiming if university research is incorrectly excluded; over-claiming if wrong rate applied",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "CR-04",
+            "title": "Cost-Plus Contract — Taxpayer Doesn't Bear Financial Risk",
+            "scenario": "Under a cost-plus contract, the contractor is reimbursed for all costs plus a fixed fee or percentage, regardless of research outcomes. Because the taxpayer pays regardless of success or failure, the 'financial risk' test may be technically met — but only if payment is contingent on research being performed, not on success.",
+            "authority": "Treas. Reg. §1.41-2(e)(2) — financial risk test",
+            "pipeline_fields_required": [
+              "contractors[].contract_type",
+              "contractors[].payment_contingent_on_research_performance",
+              "contractors[].payment_contingent_on_research_success",
+              "contractors[].financial_risk_analysis"
+            ],
+            "computation_or_treatment": "Payment must be contingent on research being performed (process contingent), not contingent on the research succeeding (outcome contingent). A cost-plus contract where the taxpayer pays regardless of results fails the financial risk test if there is no possibility of non-payment. The pipeline must capture contract type and require a financial risk attestation.",
+            "audit_risk_if_ignored": "HIGH — Cost-plus contractors without risk analysis are a common IRS disallowance",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "CR-05",
+            "title": "Contractor Performing Mixed Qualified and Non-Qualified Work",
+            "scenario": "A contractor performs both qualified research (e.g., battery aging tests) and non-qualified services (e.g., equipment calibration, report formatting, sample logistics). Only the qualified portion is subject to the 65% rule.",
+            "authority": "IRC §41(b)(3) — only qualified research expenditures paid to a contractor qualify",
+            "pipeline_fields_required": [
+              "contractors[].qualified_percentage",
+              "contractors[].non_qualified_activities_description",
+              "contractors[].sow_line_item_breakdown"
+            ],
+            "computation_or_treatment": "The 65% rule applies to the qualified portion of contractor payments, not the gross invoice. The pipeline must allow qualified_percentage < 1.0 on contractor records and require documentation of the non-qualified exclusion. QRE = total_paid × qualified_pct × 0.65.",
+            "audit_risk_if_ignored": "MEDIUM — Including 100% of a contractor invoice when non-qualified services are bundled overstates QRE",
+            "novapulse_triggered": false,
+            "novapulse_note": "All NovaPulse contractors currently show qualified_percentage: 1.0. Pipeline should prompt preparer to confirm no non-qualified services are bundled (e.g., ThermalDyn pilot site logistics, BatteryTest Labs sample handling)."
+          }
+        ]
+      },
+      "ASC_CALCULATION": {
+        "section_title": "ASC Calculation Edge Cases",
+        "irc_anchor": "IRC §41(c)(5), Treas. Reg. §1.41-3",
+        "cases": [
+          {
+            "id": "A-01",
+            "title": "First Year of Credit — No Prior-Year QREs",
+            "scenario": "A company claims the R&D credit for the first time and has no prior-year QREs. Under the ASC method, if no QREs exist for ANY of the three prior years, a special startup rule applies.",
+            "authority": "IRC §41(c)(5)(B) — ASC startup rules; if no QREs in prior 3 years, credit = 6% of current QREs",
+            "pipeline_fields_required": [
+              "asc_calculation_inputs.first_year_of_credit",
+              "asc_calculation_inputs.prior_year_qre_count_with_activity",
+              "asc_calculation_inputs.startup_asc_rate_applied",
+              "asc_calculation_inputs.startup_rule_explanation"
+            ],
+            "computation_or_treatment": "If the taxpayer has QREs for fewer than 3 of the prior years, the ASC base is zero for the missing years and the average uses the actual years with data. If the taxpayer has NO QREs for ALL THREE prior years, the credit is 6% of current QREs (half of the normal 14% × excess). The pipeline must detect this condition and switch computation accordingly.",
+            "audit_risk_if_ignored": "CRITICAL — Applying the standard 14% formula when the 6% startup rule applies overstates the credit by 133%",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "A-02",
+            "title": "Short Tax Year — QRE Proration",
+            "scenario": "A company changes its fiscal year or is newly formed, resulting in a tax year shorter than 12 months. QREs must be annualised for purposes of computing the ASC base.",
+            "authority": "IRC §41(f)(4) — short taxable year rules; Treas. Reg. §1.41-7",
+            "pipeline_fields_required": [
+              "study_metadata.tax_year.is_short_year",
+              "study_metadata.tax_year.actual_days",
+              "asc_calculation_inputs.short_year_annualisation_factor",
+              "asc_calculation_inputs.annualised_qre"
+            ],
+            "computation_or_treatment": "For a short year: annualised QRE = actual QRE × (365 / actual days). The annualised figure is used as the 'current year QRE' for ASC purposes, and the resulting credit is then pro-rated back to the actual year. The pipeline must detect short years and apply this two-step proration.",
+            "audit_risk_if_ignored": "HIGH — Short years are common on acquisition or entity formation; incorrect credit if proration is not applied",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "A-03",
+            "title": "Acquisition Mid-Year — Acquired Entity's Prior QREs",
+            "scenario": "Company A acquires Company B mid-year. Company B had prior-year QREs. Under §41(f)(3), the acquirer steps into the target's QRE history for purposes of computing the ASC base.",
+            "authority": "IRC §41(f)(3) — acquisition/disposition rules",
+            "pipeline_fields_required": [
+              "business_flags.acquisition_occurred",
+              "business_flags.acquisition_date",
+              "business_flags.acquired_entity_name",
+              "business_flags.acquired_entity_prior_qres",
+              "asc_calculation_inputs.combined_prior_year_qre_post_acquisition"
+            ],
+            "computation_or_treatment": "After an acquisition, the taxpayer's prior-year QRE base includes the acquired entity's historical QREs (weighted for the portion of the year held). The pipeline must have an acquisition flag and allow manual entry or import of the acquired entity's QRE history.",
+            "audit_risk_if_ignored": "HIGH — Understating the prior-year QRE base overstates the credit; overstating it understates the credit",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "A-04",
+            "title": "Net Operating Loss Year — Credit Generated but Possibly Unusable",
+            "scenario": "In a loss year, the taxpayer generates an R&D credit but may have no federal income tax liability against which to apply it. The credit carries back 1 year and forward 20 years under §39.",
+            "authority": "IRC §39 — credit carryback and carryforward; IRC §38 — general business credit limitation",
+            "pipeline_fields_required": [
+              "business_flags.net_operating_loss_year",
+              "business_flags.estimated_tax_liability",
+              "business_flags.credit_usable_current_year",
+              "business_flags.credit_carryforward_amount",
+              "business_flags.credit_carryback_elected"
+            ],
+            "computation_or_treatment": "The pipeline must capture estimated tax liability and compute how much of the current credit is usable vs. carried. For carryback elections (1 year back): an amended return must be filed for the prior year. The pipeline should generate a carryforward tracking schedule when a loss year is detected.",
+            "audit_risk_if_ignored": "MEDIUM — No IRS risk, but significant cash planning impact if carryforward is not tracked",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "A-05",
+            "title": "General Business Credit Basket — §38 Ordering",
+            "scenario": "The R&D credit is one of many general business credits claimed on Form 3800. The §38 limitation (credit limited to net income tax minus tentative minimum tax) may restrict the usable amount. The ordering of credits within the basket affects which credits are used first and which carry forward.",
+            "authority": "IRC §38(b), IRC §38(c) — GBC ordering and limitation",
+            "pipeline_fields_required": [
+              "business_flags.other_general_business_credits",
+              "business_flags.form_3800_ordering_analysis",
+              "business_flags.tentative_minimum_tax",
+              "business_flags.net_income_tax_for_credit_limitation"
+            ],
+            "computation_or_treatment": "The R&D credit is subject to the §38 GBC limitation. If other credits (FICA tip credit, work opportunity credit, etc.) are also present, the ordering on Form 3800 determines which credits are absorbed against the limitation first. The pipeline should flag the presence of other GBCs and prompt for Form 3800 analysis.",
+            "audit_risk_if_ignored": "MEDIUM — Over-claiming if GBC basket is full; under-claiming if carryforward ordering is incorrect",
+            "novapulse_triggered": false
+          }
+        ]
+      },
+      "FUNDED_RESEARCH": {
+        "section_title": "Funded Research Exclusion Edge Cases — IRC §41(d)(4)(A)",
+        "irc_anchor": "IRC §41(d)(4)(A), Treas. Reg. §1.41-4(d)",
+        "cases": [
+          {
+            "id": "F-01",
+            "title": "SBIR / STTR Awards — Entire Project May Be Tainted",
+            "scenario": "A company receives a Small Business Innovation Research (SBIR) or Small Business Technology Transfer (STTR) award from a federal agency. The entire research project funded by the award is excluded from §41 QREs.",
+            "authority": "IRC §41(d)(4)(A) — funded by any governmental entity",
+            "pipeline_fields_required": [
+              "business_flags.sbir_sttr_awards_received",
+              "business_flags.sbir_sttr_award_amounts",
+              "business_flags.sbir_sttr_project_references",
+              "rd_projects[].funded_by_sbir_sttr",
+              "rd_projects[].sbir_sttr_qre_excluded_amount"
+            ],
+            "computation_or_treatment": "Any project funded by an SBIR/STTR award must have its QREs excluded — both the funded portion and, in some interpretations, the entire project. The pipeline must ask annually about SBIR/STTR awards and link any award to specific projects, zeroing out those project QREs.",
+            "audit_risk_if_ignored": "CRITICAL — Including federally funded research in §41 QREs is a complete disqualification that can result in substantial penalties",
+            "novapulse_triggered": false,
+            "novapulse_note": "Current business_flags.funded_by_third_party: false. Pipeline must verify this annually and specifically ask about SBIR/STTR in the intake questionnaire."
+          },
+          {
+            "id": "F-02",
+            "title": "Grants Received After Year-End — Retroactive Impact",
+            "scenario": "A company receives a government grant in February of Year 2 that specifically reimburses research conducted in Year 1. This retroactively creates funded research in Year 1, requiring amendment of the prior year return.",
+            "authority": "Treas. Reg. §1.41-4(d)(1) — funded at the time of research or by reimbursement",
+            "pipeline_fields_required": [
+              "business_flags.post_year_end_grants_received",
+              "business_flags.grant_receipt_date",
+              "business_flags.grant_reimburses_prior_year_research",
+              "business_flags.amended_return_required_flag"
+            ],
+            "computation_or_treatment": "Post-year-end grants that reimburse prior-year research require amendment of the affected year's return to remove the now-funded QREs. The pipeline must ask about grants received after the tax year end and track whether any retroactively taint prior-year QREs.",
+            "audit_risk_if_ignored": "HIGH — Receiving a government grant and not amending the prior R&D credit return is a known IRS trigger",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "F-03",
+            "title": "Collaborative University Research — Who Bears Risk?",
+            "scenario": "A company enters a sponsored research agreement (SRA) with a university. The university conducts research, the company pays. If the SRA grants the company rights to results and the company bears financial risk, it qualifies as contract research. If the university has IP rights or the federal government co-funds the university's work, the exclusion may apply.",
+            "authority": "IRC §41(d)(4)(A); Bayh-Dole Act implications for federally-funded university research",
+            "pipeline_fields_required": [
+              "contractors[].university_sra_flag",
+              "contractors[].university_federal_funding_analysis",
+              "contractors[].bayh_dole_ip_rights_analysis",
+              "contractors[].company_ip_rights_confirmed"
+            ],
+            "computation_or_treatment": "If the university research is itself federally funded (common under Bayh-Dole), the company's payments may be funding federally-funded research — a double exclusion problem. The pipeline must require a Bayh-Dole analysis for any SRA with a university that may have existing federal grants on the same research area.",
+            "audit_risk_if_ignored": "HIGH — Universities with federal grants co-funding the same research create a funded research exclusion even if the company's payment itself is not from the government",
+            "novapulse_triggered": false
+          }
+        ]
+      },
+      "DOCUMENTATION": {
+        "section_title": "Documentation and Substantiation Edge Cases",
+        "irc_anchor": "IRC §6001, Treas. Reg. §1.6001-1, IRS Rev. Proc. 2004-11",
+        "cases": [
+          {
+            "id": "D-01",
+            "title": "Reconstructed Records — Weaker Substantiation Standard",
+            "scenario": "A company did not maintain contemporaneous R&D records during the tax year. The study is being prepared years after the fact using reconstructed timesheets, retrospective interviews, and after-the-fact summaries.",
+            "authority": "Treas. Reg. §1.6001-1 — records must be kept; reconstructed records are permitted but carry higher audit risk",
+            "pipeline_fields_required": [
+              "documentation_standards.records_are_contemporaneous",
+              "documentation_standards.reconstruction_required",
+              "documentation_standards.reconstruction_basis",
+              "documentation_standards.reconstruction_risk_acknowledgement"
+            ],
+            "computation_or_treatment": "The pipeline must ask whether records are contemporaneous or reconstructed. Reconstructed records should trigger a risk flag, reduced recommended qualification percentages, and a disclosure in the study document that records were reconstructed. The credit remains claimable but the position is weaker.",
+            "audit_risk_if_ignored": "HIGH — Reconstructed records without disclosure can be characterised as fraud if discovered; with disclosure they are merely a weaker substantiation position",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "D-02",
+            "title": "GitHub / Version Control as Primary Evidence",
+            "scenario": "For software R&D, version control commit history (GitHub, GitLab, Bitbucket) is the highest-quality contemporaneous evidence available — commit timestamps are immutable and commit messages describe the technical work.",
+            "authority": "IRS guidance on electronic records — Rev. Proc. 98-25; contemporaneous electronic records satisfy §6001",
+            "pipeline_fields_required": [
+              "rd_projects[].version_control_system",
+              "rd_projects[].repository_urls",
+              "rd_projects[].commit_date_range",
+              "rd_projects[].commit_evidence_exported"
+            ],
+            "computation_or_treatment": "The pipeline must collect repository URLs for every software project and prompt for export of commit logs for the research period. Commit history should be archived as part of the study documentation. The pipeline should auto-validate that commit dates fall within the claimed research period.",
+            "audit_risk_if_ignored": "LOW — Missing this strengthens the IRS's negotiating position; having it essentially closes the documentation question for software projects",
+            "novapulse_triggered": true,
+            "novapulse_note": "GitHub links are present in evidence_links for all software projects. Pipeline must validate that these links are active and that commit date ranges cover the claimed research periods. Consider exporting commit logs as PDF snapshots archived with the study file."
+          },
+          {
+            "id": "D-03",
+            "title": "Interview Conducted Years After the Fact — Reliability Risk",
+            "scenario": "A researcher is interviewed 3+ years after the research year to reconstruct what activities they performed. Memory decay and litigation incentive both reduce reliability.",
+            "authority": "IRS audit practice — contemporaneous interviews (same year) are strongest; retrospective interviews are weaker but acceptable",
+            "pipeline_fields_required": [
+              "interview_metadata.interview_date",
+              "interview_metadata.years_after_tax_year",
+              "interview_metadata.contemporaneous_flag",
+              "interview_metadata.corroboration_required"
+            ],
+            "computation_or_treatment": "The pipeline must compute years_after_tax_year = interview_date year − tax_year. If >2 years, flag as RETROSPECTIVE and require stronger documentary corroboration (project logs, test reports) for each claimed allocation. Retrospective interviews should never be the sole substantiation.",
+            "audit_risk_if_ignored": "MEDIUM — IRS specifically challenges retrospective interviews; having corroborating documents for each allocation is critical",
+            "novapulse_triggered": true,
+            "novapulse_note": "2022 interviews were conducted 2023-03-15 (~1.2 years later — acceptable). 2023 interviews 2024-03-12 (~1.2 years — acceptable). 2024 interviews 2025-03-18 (~1.2 years — acceptable). Pipeline should compute and store this gap for every study year."
+          },
+          {
+            "id": "D-04",
+            "title": "IRS IDR Export — Pipeline Must Support Structured Output",
+            "scenario": "During an IRS examination, the agent will issue an Information Document Request (IDR) asking for all documents supporting the R&D credit — employee list, project descriptions, supporting documents, contractor agreements, supply invoices.",
+            "authority": "IRC §7602 — IRS authority to examine books and records",
+            "pipeline_fields_required": [
+              "idr_export_package",
+              "idr_employee_list_format",
+              "idr_project_summary_format",
+              "idr_supporting_documents_index",
+              "idr_contractor_agreement_index"
+            ],
+            "computation_or_treatment": "The pipeline must support one-click generation of an IDR response package: (1) employee QRE allocation table, (2) project four-part test narratives, (3) indexed document list keyed to evidence_links, (4) contractor agreement summaries, (5) supply invoice index. This is a developer deliverable, not a calculation.",
+            "audit_risk_if_ignored": "HIGH — An unorganised IDR response delays exams and creates opportunities for additional scrutiny",
+            "novapulse_triggered": false
+          }
+        ]
+      },
+      "COMPLIANCE_AND_FILING": {
+        "section_title": "Compliance & Filing Edge Cases",
+        "irc_anchor": "IRC §6501, §6511, §6662, §6694",
+        "cases": [
+          {
+            "id": "CF-01",
+            "title": "Statute of Limitations — 3-Year Standard, 6-Year Substantial Omission",
+            "scenario": "The standard SOL for the IRS to audit a return is 3 years from filing. If QREs are omitted (understated) by more than 25% of gross income, the SOL extends to 6 years. For fraudulent returns, there is no SOL.",
+            "authority": "IRC §6501(a) — 3-year SOL; §6501(e) — 6-year for substantial omissions",
+            "pipeline_fields_required": [
+              "filing_metadata.statute_of_limitations_date",
+              "filing_metadata.sol_extension_risk",
+              "filing_metadata.protective_claim_filed",
+              "filing_metadata.protective_claim_date"
+            ],
+            "computation_or_treatment": "The pipeline must compute and display the SOL expiry date for each year's return. If the taxpayer wants to file a protective claim (to preserve the right to amend for a credit not yet fully documented), the pipeline must generate the protective claim filing date as the SOL date minus a safety margin (e.g., 90 days).",
+            "audit_risk_if_ignored": "HIGH — Filing an amended return after SOL to claim additional credit is barred; missing the SOL forfeits the credit",
+            "novapulse_triggered": true,
+            "novapulse_note": "2022 return filed 2023-10-12. SOL expires ~2026-10-12 (3 years). 2023 return filed 2024-10-08. SOL expires ~2027-10-08. Pipeline must display SOL dates prominently in the report and generate calendar alerts."
+          },
+          {
+            "id": "CF-02",
+            "title": "§6662 Accuracy-Related Penalty — Substantial Understatement",
+            "scenario": "If the IRS disallows R&D credits and the resulting underpayment exceeds 10% of the tax shown on the return (or $5,000 for individuals), a 20% accuracy-related penalty applies. For substantial valuation misstatements the penalty is 40%.",
+            "authority": "IRC §6662(a)(b)(2) — substantial understatement; §6662(b)(3) — negligence",
+            "pipeline_fields_required": [
+              "business_flags.penalty_exposure_analysis",
+              "business_flags.substantial_authority_basis",
+              "business_flags.reasonable_basis_documentation",
+              "business_flags.disclosure_on_return_required"
+            ],
+            "computation_or_treatment": "For each aggressive QRE position (flagged items like Jetson modules, ThermalDyn contractor, S003 mPCM), the pipeline must document the legal authority supporting the position. If authority is 'reasonable basis' (30%+ chance of prevailing), the position must be disclosed on the return (Form 8275). If 'substantial authority' (40%+ chance), no disclosure required.",
+            "audit_risk_if_ignored": "HIGH — Undisclosed positions that fail on audit carry the 20% penalty on top of the credit disallowance",
+            "novapulse_triggered": true,
+            "novapulse_note": "ThermalDyn $34,000 (2024), Jetson modules $16,800 (2024), and S003 mPCM $8,900 (2023) are all flagged compliance_flag: REVIEW REQUIRED. Pipeline must require a penalty_exposure_analysis on any flagged item before filing."
+          },
+          {
+            "id": "CF-03",
+            "title": "Amended Return — Credit on Original vs. Amended",
+            "scenario": "A taxpayer files the original return without claiming the R&D credit (either missed it or didn't have the study ready). They later file Form 1120-X to claim the credit within the SOL. There are specific rules about which year's form 6765 to use and whether the ASC method election can be made on an amended return.",
+            "authority": "IRC §6511(a) — amended return refund claim; Rev. Proc. 2023-11 — ASC election on amended returns",
+            "pipeline_fields_required": [
+              "filing_metadata.credit_on_original_return",
+              "filing_metadata.amended_return_flag",
+              "filing_metadata.amended_return_date",
+              "filing_metadata.asc_election_made_on_original",
+              "filing_metadata.amended_return_limitations"
+            ],
+            "computation_or_treatment": "The ASC election cannot generally be made or changed on an amended return if the original return was filed without it (post-TCJA). Pipeline must flag if the study is being prepared for an amended return and alert the preparer to the election constraints.",
+            "audit_risk_if_ignored": "HIGH — Filing an amended return claiming ASC when the original return used regular credit (or no credit) may be disallowed",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "CF-04",
+            "title": "IRS LB&I R&D Campaign — Heightened Audit Probability",
+            "scenario": "The IRS Large Business & International (LB&I) division maintains active audit campaigns targeting R&D credits. Taxpayers with large, growing, or complex R&D credit claims have elevated examination probability.",
+            "authority": "IRS LB&I Issue Practice Guide — Research Credit; IRS Directive LB&I-04-0916-006",
+            "pipeline_fields_required": [
+              "audit_risk_assessment.lbi_campaign_exposure",
+              "audit_risk_assessment.credit_as_pct_of_tax_liability",
+              "audit_risk_assessment.year_over_year_credit_growth_pct",
+              "audit_risk_assessment.idr_readiness_score"
+            ],
+            "computation_or_treatment": "The pipeline should compute: (1) R&D credit as % of estimated tax liability (>30% = elevated risk), (2) year-over-year credit growth rate (>50% = LB&I flagging threshold), (3) an IDR readiness score based on completeness of documentation. Flag any client at high LB&I risk for pre-filing document review.",
+            "audit_risk_if_ignored": "HIGH — LB&I campaign clients have 40-60% examination rates for their R&D credit; unprepared documentation packages result in disallowance",
+            "novapulse_triggered": true,
+            "novapulse_note": "NovaPulse credit grew from $64,906 (2022) to $86,179 (2024) — 33% growth over 2 years. Clean energy/battery sector is an LB&I focus area. IDR readiness should be assessed before filing 2024 return."
+          }
+        ]
+      },
+      "STATE_CREDITS": {
+        "section_title": "State R&D Credit Edge Cases",
+        "irc_anchor": "State-specific statutes; referenced IRC §41 as piggyback base",
+        "cases": [
+          {
+            "id": "ST-01",
+            "title": "Multi-State QRE Apportionment",
+            "scenario": "A company conducts research in multiple states. Each state credit is based only on QREs for research conducted within that state. A single employee working across two states must apportion wages by work location.",
+            "authority": "State-specific — e.g., CA: R&TC §23609; CO: C.R.S. §39-22-529",
+            "pipeline_fields_required": [
+              "state_credits[].state",
+              "state_credits[].in_state_qre",
+              "state_credits[].in_state_wage_qre",
+              "state_credits[].in_state_supply_qre",
+              "state_credits[].in_state_contractor_qre",
+              "state_credits[].in_state_cloud_qre",
+              "state_credits[].apportionment_method"
+            ],
+            "computation_or_treatment": "The pipeline must compute a separate QRE total for each state in which research is conducted. Employee wages must be apportioned by work location (not residence). The federal QRE total will generally be >= the sum of all state QRE totals.",
+            "audit_risk_if_ignored": "HIGH — Using federal QRE as the state QRE base when only a portion of research was conducted in-state overstates the state credit",
+            "novapulse_triggered": true,
+            "novapulse_note": "2024: Denver (CO) and Austin (TX). CO has a 3% R&D credit; TX has no income tax credit. P004 Austin pilot work (10% of 2024 research) is TX-sited — no CO credit on that portion. CO credit base should exclude Austin-sited QREs."
+          },
+          {
+            "id": "ST-02",
+            "title": "State Credit Carryforward Periods vs. Federal 20-Year",
+            "scenario": "Federal R&D credit carries forward 20 years. State credit carryforward periods vary: California is 15 years, Colorado is 5 years, New York is 15 years. Tracking mismatches is critical for cash planning.",
+            "authority": "State-specific statutes",
+            "pipeline_fields_required": [
+              "state_credits[].carryforward_period_years",
+              "state_credits[].carryforward_balance",
+              "state_credits[].carryforward_expiry_schedule",
+              "state_credits[].refundable"
+            ],
+            "computation_or_treatment": "The pipeline must maintain separate carryforward schedules per state with state-specific expiry dates. Alert when a carryforward balance is within 1 year of expiring — this triggers either use or loss.",
+            "audit_risk_if_ignored": "MEDIUM (audit) — Expired carryforwards are a permanent cash loss, not an audit risk",
+            "novapulse_triggered": true,
+            "novapulse_note": "Colorado R&D credit has a 5-year carryforward (C.R.S. §39-22-529.5). If NovaPulse cannot use the CO credit in the year earned, the carryforward window is narrow. Pipeline must track CO credit carryforward separately from federal."
+          },
+          {
+            "id": "ST-03",
+            "title": "State Nexus Created by R&D Activity",
+            "scenario": "Conducting R&D in a state (via employees, contractors, or a temporary office) may create state tax nexus, triggering a filing obligation. A company may not be registered to file in a state where a contractor performs work.",
+            "authority": "State constitutional nexus standards — Quill/South Dakota v. Wayfair; physical presence nexus",
+            "pipeline_fields_required": [
+              "geographic_research_allocation[].nexus_analysis_required",
+              "geographic_research_allocation[].state_filing_obligation",
+              "contractors[].work_state_nexus_risk"
+            ],
+            "computation_or_treatment": "Any state where the taxpayer has employees working or contractors performing substantial work may create nexus. The pipeline must flag states where research is conducted but where the taxpayer is not currently registered to file, and recommend a nexus analysis.",
+            "audit_risk_if_ignored": "MEDIUM (R&D credit) / HIGH (state income tax) — Conducting R&D in a state without filing may create unfiled return exposure larger than the credit benefit",
+            "novapulse_triggered": true,
+            "novapulse_note": "2024 Austin expansion: NovaPulse should confirm Texas franchise tax (margin tax) filing obligations are being met for the Austin site. No income tax exposure, but gross-margin-based franchise tax may apply."
+          }
+        ]
+      },
+      "ENTITY_STRUCTURE": {
+        "section_title": "Entity Structure Edge Cases",
+        "irc_anchor": "IRC §41(f), §267, §318, §1563",
+        "cases": [
+          {
+            "id": "E-01",
+            "title": "Controlled Group — All Members Treated as Single Taxpayer",
+            "scenario": "If the taxpayer is part of a controlled group (parent-subsidiary, brother-sister, or combined group under §1563), all members' QREs and prior-year QREs must be combined. The credit is then allocated among members.",
+            "authority": "IRC §41(f)(1) — all members of a controlled group treated as a single taxpayer",
+            "pipeline_fields_required": [
+              "controlled_group_analysis.members",
+              "controlled_group_analysis.total_combined_qre",
+              "controlled_group_analysis.credit_allocation_method",
+              "controlled_group_analysis.allocation_by_proportionate_qre"
+            ],
+            "computation_or_treatment": "The pipeline must check for controlled group membership on every intake. If a group exists, it must: (1) collect QREs from all members, (2) compute the combined credit, (3) allocate the credit proportionally among members by each member's share of combined QREs. Failure to aggregate the group overstates the credit.",
+            "audit_risk_if_ignored": "CRITICAL — Controlled group members each claiming the full credit is a per se overstatement",
+            "novapulse_triggered": false,
+            "novapulse_note": "NovaPulse is a standalone entity. Pipeline must re-confirm annually — a future acquisition or subsidiary formation changes this analysis immediately."
+          },
+          {
+            "id": "E-02",
+            "title": "Change in Ownership — §382 NOL Limitation Affects Credit Carryforward",
+            "scenario": "If ownership of the company changes by more than 50% within a 3-year period (§382 ownership change), the ability to use NOL carryforwards is limited. R&D credit carryforwards may also be limited under §383.",
+            "authority": "IRC §382 — NOL limitation; IRC §383 — credit limitation on ownership change",
+            "pipeline_fields_required": [
+              "business_flags.ownership_change_flag",
+              "business_flags.ownership_change_date",
+              "business_flags.section_382_annual_limitation",
+              "business_flags.section_383_credit_limitation_applied",
+              "business_flags.credit_carryforward_post_382"
+            ],
+            "computation_or_treatment": "If a §382 ownership change has occurred, credit carryforwards from before the change date are subject to an annual limitation. The pipeline must capture ownership change events and compute the §383 limitation on credit carryforward utilisation.",
+            "audit_risk_if_ignored": "HIGH — Using more credit carryforward than the §383 limit allows is an overstatement",
+            "novapulse_triggered": false
+          },
+          {
+            "id": "E-03",
+            "title": "Reorganisation or Spin-Off — Who Takes the Credit and Prior QREs?",
+            "scenario": "In a tax-free reorganisation (§368), a merger, or a spin-off, the credit and prior-year QRE history follow the business that conducted the research. Proper allocation is required.",
+            "authority": "IRC §41(f)(3)(A) — successor rules; Treas. Reg. §1.41-7",
+            "pipeline_fields_required": [
+              "business_flags.reorganisation_occurred",
+              "business_flags.reorganisation_type",
+              "business_flags.predecessor_entity",
+              "business_flags.qre_history_transferred",
+              "business_flags.credit_carryforward_transferred"
+            ],
+            "computation_or_treatment": "The successor entity steps into the predecessor's QRE history for ASC base purposes. The pipeline must have a reorganisation flag and allow import of predecessor QRE data. The resulting prior-year QRE base is a blended figure.",
+            "audit_risk_if_ignored": "HIGH — Ignoring predecessor QREs overstates the credit if the prior years had high QREs; understating if prior years had low QREs",
+            "novapulse_triggered": false
+          }
+        ]
+      }
+    },
+    "pipeline_validation_rules": {
+      "description": "Automatic validation rules the pipeline should enforce on every study intake. These are derived from the edge cases above.",
+      "rules": [
+        {
+          "rule_id": "VAL-001",
+          "trigger": "supplies[].unit_cost > 500",
+          "check": "supplies[].depreciable_property_check AND supplies[].physically_destroyed_in_research",
+          "error_message": "Supply item with unit cost > $500 must confirm it is not depreciable property (IRC §41(b)(2)(C)). If reusable hardware, remove from qualified supplies.",
+          "severity": "ERROR"
+        },
+        {
+          "rule_id": "VAL-002",
+          "trigger": "contractors[].work_performed_in_us == false OR contractors[].contractor_country != 'US'",
+          "check": "contractors[].eligible_qre == 0",
+          "error_message": "Foreign contractor work is excluded under IRC §41(b)(3)(C). Set eligible QRE to $0.",
+          "severity": "CRITICAL"
+        },
+        {
+          "rule_id": "VAL-003",
+          "trigger": "rd_projects[].commercial_production_start_date is not null",
+          "check": "No QREs claimed after commercial_production_start_date without new_uncertainty documentation",
+          "error_message": "QREs exist after production start date. Each must be tied to a new, distinct technical uncertainty.",
+          "severity": "ERROR"
+        },
+        {
+          "rule_id": "VAL-004",
+          "trigger": "sum(employees[].project_allocation[].percent_of_employee_time) != 1.0",
+          "check": "Allocation percentages sum to exactly 1.0",
+          "error_message": "Employee project allocation does not sum to 100%. Check allocation percentages.",
+          "severity": "CRITICAL"
+        },
+        {
+          "rule_id": "VAL-005",
+          "trigger": "business_flags.sbir_sttr_awards_received == true",
+          "check": "rd_projects[funded_by_sbir_sttr].qre == 0",
+          "error_message": "SBIR/STTR-funded projects must be excluded from QRE (IRC §41(d)(4)(A)).",
+          "severity": "CRITICAL"
+        },
+        {
+          "rule_id": "VAL-006",
+          "trigger": "cloud_computing[].regions_used contains non-US regions",
+          "check": "cloud_computing[].foreign_region_amount is excluded from QRE",
+          "error_message": "Foreign cloud region compute costs are excluded under IRC §41(d)(4)(F).",
+          "severity": "ERROR"
+        },
+        {
+          "rule_id": "VAL-007",
+          "trigger": "contractors[].rights_and_risk.contractor_retains_no_independent_rights == false OR null",
+          "check": "contractors[].eligible_qre == 0",
+          "error_message": "Contractor retains IP rights. Payment cannot qualify as contract research QRE (Treas. Reg. §1.41-2(e)(1)).",
+          "severity": "CRITICAL"
+        },
+        {
+          "rule_id": "VAL-008",
+          "trigger": "asc_calculation_inputs.qre_prior_years_override.year_minus_1_qre != prior_year_asc_results.total_qre",
+          "check": "Prior-year QRE in ASC input matches the actual computed QRE from the prior year study",
+          "error_message": "Prior-year QRE used in ASC base does not match the computed QRE from the prior year study. This caused a $2,949.68 error in the NovaPulse study. Cross-validate against prior year study data.",
+          "severity": "CRITICAL"
+        },
+        {
+          "rule_id": "VAL-009",
+          "trigger": "employees[].is_owner_officer == true",
+          "check": "employees[].owner_officer_detail is not null AND employees[].owner_officer_designation_basis is not null",
+          "error_message": "Officer/owner employee requires documented basis for owner classification and exclusion of non-R&D time.",
+          "severity": "ERROR"
+        },
+        {
+          "rule_id": "VAL-010",
+          "trigger": "rd_projects[].status == 'Ongoing' AND rd_projects[].qra_year < current_tax_year - 1",
+          "check": "rd_projects[].new_uncertainty_for_continued_research is not null",
+          "error_message": "Multi-year ongoing project must document a new or continuing technical uncertainty for each year's QRA. Resolved prior-year uncertainty alone does not support continued QREs.",
+          "severity": "WARNING"
+        },
+        {
+          "rule_id": "VAL-011",
+          "trigger": "interview_metadata.interview_date year - tax_year year > 2",
+          "check": "interview_metadata.corroboration_required == true AND documentation_standards.records_are_contemporaneous == true",
+          "error_message": "Interview conducted more than 2 years after the tax year. Retrospective interviews require stronger documentary corroboration for all allocations.",
+          "severity": "WARNING"
+        },
+        {
+          "rule_id": "VAL-012",
+          "trigger": "supplies[].consumed_in_research == true AND supplies[].date_of_consumption > tax_year_end_date",
+          "check": "supplies[].qre_year_assigned = consumption_year, not purchase_year",
+          "error_message": "Supply consumed after tax year-end. QRE should be assigned to the consumption year under accrual rules. Verify cross-year supply accounting.",
+          "severity": "ERROR"
+        },
+        {
+          "rule_id": "VAL-013",
+          "trigger": "business_flags.is_startup == false AND asc_calculation_inputs.qre_prior_years_override.year_minus_1_qre == 0 AND year_minus_2_qre == 0 AND year_minus_3_qre == 0",
+          "check": "asc_calculation_inputs.startup_asc_rate_applied == true (6% rate)",
+          "error_message": "No QREs in all three prior years but startup rule not applied. Credit should be 6% of current QREs, not 14% × excess.",
+          "severity": "CRITICAL"
+        },
+        {
+          "rule_id": "VAL-014",
+          "trigger": "employees[].hire_date is not null",
+          "check": "employees[].pro_rata_calculation is not null",
+          "error_message": "Mid-year hire detected. Pro-rata wage calculation required to confirm all claimed wages are post-hire.",
+          "severity": "ERROR"
+        },
+        {
+          "rule_id": "VAL-015",
+          "trigger": "employees[].qualified_percentage == 1.0",
+          "check": "employees[].excluded_time_description is not null AND excluded_time_description contains explanation of 0% non-qualified time",
+          "error_message": "Employee with 100% qualification is unusual. Confirm no administrative, sales, or non-R&D time exists and document the basis.",
+          "severity": "WARNING"
+        }
+      ]
+    },
+    "novapulse_specific_action_items": {
+      "description": "Edge cases directly triggered by data in the NovaPulse study that require action before the pipeline produces a final report.",
+      "items": [
+        {
+          "priority": "CRITICAL",
+          "edge_case_ids": [
+            "S-05",
+            "VAL-001"
+          ],
+          "item": "NVIDIA Jetson Orin NX (6 units, $16,800) — confirm physically destroyed in testing or remove from qualified supplies and move to capital equipment schedule",
+          "year": "2024",
+          "field": "supplies[S003]"
+        },
+        {
+          "priority": "CRITICAL",
+          "edge_case_ids": [
+            "S-05",
+            "VAL-001"
+          ],
+          "item": "Sierra Wireless RV55 routers (12 units, $14,400) — confirm not deployed to customer FL sites; if deployed, remove from qualified supplies",
+          "year": "2024",
+          "field": "supplies[S004]"
+        },
+        {
+          "priority": "CRITICAL",
+          "edge_case_ids": [
+            "P-04",
+            "F-01"
+          ],
+          "item": "Supply S003 mPCM ($8,900) — resolve project allocation; P002 closed 2022-12-31; no active thermal project exists in 2023",
+          "year": "2023",
+          "field": "supplies[S003]"
+        },
+        {
+          "priority": "CRITICAL",
+          "edge_case_ids": [
+            "P-02",
+            "VAL-003"
+          ],
+          "item": "P001 FL firmware: enforce $0 QRE for Q4 2024 post-deployment production operations. Pipeline must auto-zero QREs after prototype_production_boundary.P001.production_start = 2024-Q4",
+          "year": "2024",
+          "field": "rd_projects[P001], employees[E003]"
+        },
+        {
+          "priority": "CRITICAL",
+          "edge_case_ids": [
+            "VAL-008"
+          ],
+          "item": "Prior-year QRE chain validation: ASC inputs must be cross-validated against actual computed QREs from prior year study records. Build automated reconciliation.",
+          "year": "all",
+          "field": "asc_calculation_inputs.qre_prior_years_override"
+        },
+        {
+          "priority": "HIGH",
+          "edge_case_ids": [
+            "CR-04",
+            "CR-05"
+          ],
+          "item": "ThermalDyn ($34,000, 2024): document R&D nexus for Austin enclosure work or reclassify as non-qualified. Confirm payment_contingent_on_research_performance.",
+          "year": "2024",
+          "field": "contractors[V003]"
+        },
+        {
+          "priority": "HIGH",
+          "edge_case_ids": [
+            "P-06"
+          ],
+          "item": "Patent applications: confirm whether NovaPulse has filed patents on BMS FL firmware (P001), MPC balancing (P001-2023), SoH engine (BC-SOH-003), or grid optimizer (BC-GRID-004). Add patent_applications field to each project.",
+          "year": "all",
+          "field": "rd_projects[].patent_applications"
+        },
+        {
+          "priority": "HIGH",
+          "edge_case_ids": [
+            "W-03"
+          ],
+          "item": "Confirm no signing bonus in Aiden Park W-2. If present, confirm it is for 2024 services and included in the $148,000 Box 1.",
+          "year": "2024",
+          "field": "employees[E006]"
+        },
+        {
+          "priority": "HIGH",
+          "edge_case_ids": [
+            "CF-04"
+          ],
+          "item": "LB&I risk: 2024 credit $86,179 is 33% higher than 2022. Clean energy + ML R&D is an IRS focus area. Conduct IDR readiness review before filing 2024 return.",
+          "year": "2024",
+          "field": "audit_risk_assessment"
+        },
+        {
+          "priority": "HIGH",
+          "edge_case_ids": [
+            "CF-01"
+          ],
+          "item": "2022 SOL expires ~October 2026. If any correction or amended credit is needed for 2022, it must be filed before that date. Pipeline must surface this alert.",
+          "year": "2022",
+          "field": "filing_metadata.statute_of_limitations_date"
+        },
+        {
+          "priority": "MEDIUM",
+          "edge_case_ids": [
+            "C-01"
+          ],
+          "item": "Verify AWS and Azure billing: confirm no production SoH inference serving (P003 fleet) shares the same billing tags as research training. Add cloud_cost_tagging_evidence to all cloud entries.",
+          "year": "2024",
+          "field": "cloud_computing[C001]"
+        },
+        {
+          "priority": "MEDIUM",
+          "edge_case_ids": [
+            "ST-01",
+            "ST-02"
+          ],
+          "item": "Colorado DR 0289: exclude Austin-sited QREs (P004 pilot ~10% of 2024 QRE) from CO credit base. File DR 0289 for 2022, 2023, and 2024 within SOL windows.",
+          "year": "2024",
+          "field": "state_credits.colorado_dr0289"
+        },
+        {
+          "priority": "MEDIUM",
+          "edge_case_ids": [
+            "D-02"
+          ],
+          "item": "Export and archive commit logs from all GitHub repositories for each study year. Validate that commit date ranges fall within the claimed research periods.",
+          "year": "all",
+          "field": "rd_projects[].evidence_links.github_links"
+        }
+      ]
+    }
+  }
